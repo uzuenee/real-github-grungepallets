@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 
 interface AuthLayoutProps {
@@ -11,7 +11,7 @@ export function AuthLayout({ children }: AuthLayoutProps) {
             {/* Back Link */}
             <div className="p-6">
                 <Link
-                    href="/"
+                    to="/"
                     className="inline-flex items-center text-secondary-300 hover:text-white transition-colors"
                 >
                     <ArrowLeft size={18} className="mr-2" />

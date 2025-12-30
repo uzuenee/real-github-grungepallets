@@ -1,5 +1,3 @@
-'use client';
-
 import { useState } from 'react';
 import { Package, ShoppingCart, Check } from 'lucide-react';
 import { Badge, Button } from '@/components/ui';

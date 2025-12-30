@@ -1,5 +1,3 @@
-'use client';
-
 import { ProductCard } from '@/components/ui/ProductCard';
 import { Product } from '@/lib/types';
 

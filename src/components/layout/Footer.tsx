@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { Link } from 'react-router-dom';
 import { COMPANY_INFO, NAV_LINKS, SERVICES } from '@/lib/constants';
 
 export function Footer() {
@@ -11,7 +11,7 @@ export function Footer() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
                     {/* Column 1: Company Info */}
                     <div className="lg:col-span-1">
-                        <Link href="/" className="inline-block mb-4">
+                        <Link to="/" className="inline-block mb-4">
                             <span className="text-2xl font-black tracking-tight">
                                 GRUNGE <span className="text-primary">PALLETS</span>
                             </span>
@@ -28,7 +28,7 @@ export function Footer() {
                             {NAV_LINKS.slice(0, 4).map((link) => (
                                 <li key={link.href}>
                                     <Link
-                                        href={link.href}
+                                        to={link.href}
                                         className="text-secondary-200 hover:text-primary transition-colors duration-200"
                                     >
                                         {link.label}
@@ -45,7 +45,7 @@ export function Footer() {
                             {SERVICES.map((service) => (
                                 <li key={service.id}>
                                     <Link
-                                        href={service.href}
+                                        to={service.href}
                                         className="text-secondary-200 hover:text-primary transition-colors duration-200"
                                     >
                                         {service.title}

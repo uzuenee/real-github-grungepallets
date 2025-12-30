@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui';
 
 export function CtaBanner() {
@@ -11,7 +11,7 @@ export function CtaBanner() {
                 <p className="text-xl text-white/80 mb-10 max-w-2xl mx-auto">
                     Get a customized quote tailored to your business needs. No obligation, no hassle.
                 </p>
-                <Link href="/quote">
+                <Link to="/quote">
                     <Button variant="outline-white" size="lg">
                         Get Your Custom Quote
                     </Button>
