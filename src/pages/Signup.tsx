@@ -1,0 +1,234 @@
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
+import { AuthLayout } from '@/components/layout';
+import { Input, Button } from '@/components/ui';
+
+interface FormData {
+  companyName: string;
+  contactName: string;
+  email: string;
+  phone: string;
+  password: string;
+  confirmPassword: string;
+  acceptTerms: boolean;
+}
+
+interface FormErrors {
+  [key: string]: string | undefined;
+}
+
+export default function Signup() {
+  const [formData, setFormData] = useState<FormData>({
+    companyName: '',
+    contactName: '',
+    email: '',
+    phone: '',
+    password: '',
+    confirmPassword: '',
+    acceptTerms: false,
+  });
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+
+  const validateForm = (): boolean => {
+    const newErrors: FormErrors = {};
+    if (!formData.companyName) newErrors.companyName = 'Company name is required';
+    if (!formData.contactName) newErrors.contactName = 'Contact name is required';
+    if (!formData.email) newErrors.email = 'Email is required';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = 'Invalid email';
+    if (!formData.password) newErrors.password = 'Password is required';
+    else if (formData.password.length < 8) newErrors.password = 'Password must be at least 8 characters';
+    if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = 'Passwords do not match';
+    if (!formData.acceptTerms) newErrors.acceptTerms = 'You must accept the terms';
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+
+    setIsSubmitting(true);
+    console.log('Signup submitted:', formData);
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    setIsSubmitting(false);
+    setIsSubmitted(true);
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value, type, checked } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value,
+    }));
+    if (errors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: undefined }));
+    }
+  };
+
+  if (isSubmitted) {
+    return (
+      <>
+        <Helmet>
+          <title>Registration Submitted | Grunge Pallets</title>
+        </Helmet>
+        <AuthLayout>
+          <div className="bg-white rounded-2xl shadow-2xl p-8 text-center">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 text-green-600 mb-6">
+              <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-bold text-secondary mb-2">Request Submitted!</h2>
+            <p className="text-secondary-400 mb-6">
+              Thank you for registering. Your account request will be verified within 24 hours.
+              We'll send you an email once your account is active.
+            </p>
+            <Link to="/">
+              <Button variant="primary">Return to Website</Button>
+            </Link>
+          </div>
+        </AuthLayout>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <Helmet>
+        <title>Request Account | Grunge Pallets</title>
+        <meta name="description" content="Request a client account with Grunge Pallets to access wholesale pricing and easy ordering." />
+      </Helmet>
+      <AuthLayout>
+        <div className="bg-white rounded-2xl shadow-2xl p-8">
+          {/* Logo */}
+          <div className="text-center mb-8">
+            <Link to="/" className="inline-block">
+              <span className="text-2xl font-black text-secondary">
+                GRUNGE <span className="text-primary">PALLETS</span>
+              </span>
+            </Link>
+            <p className="text-secondary-400 mt-2">Request a client account</p>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <Input
+              label="Company Name *"
+              name="companyName"
+              value={formData.companyName}
+              onChange={handleChange}
+              error={errors.companyName}
+              placeholder="Your Company Name"
+            />
+
+            <Input
+              label="Contact Name *"
+              name="contactName"
+              value={formData.contactName}
+              onChange={handleChange}
+              error={errors.contactName}
+              placeholder="John Smith"
+            />
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                label="Email *"
+                name="email"
+                type="email"
+                value={formData.email}
+                onChange={handleChange}
+                error={errors.email}
+                placeholder="you@company.com"
+              />
+              <Input
+                label="Phone"
+                name="phone"
+                type="tel"
+                value={formData.phone}
+                onChange={handleChange}
+                placeholder="(404) 555-1234"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                label="Password *"
+                name="password"
+                type="password"
+                value={formData.password}
+                onChange={handleChange}
+                error={errors.password}
+                placeholder="••••••••"
+              />
+              <Input
+                label="Confirm Password *"
+                name="confirmPassword"
+                type="password"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                error={errors.confirmPassword}
+                placeholder="••••••••"
+              />
+            </div>
+
+            <div className="pt-2">
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  name="acceptTerms"
+                  checked={formData.acceptTerms}
+                  onChange={handleChange}
+                  className="w-4 h-4 mt-1 rounded border-secondary-300 text-primary focus:ring-primary"
+                />
+                <span className="text-sm text-secondary-400">
+                  I agree to the{' '}
+                  <Link to="/terms" className="text-primary hover:text-primary-600">
+                    Terms of Service
+                  </Link>{' '}
+                  and{' '}
+                  <Link to="/privacy" className="text-primary hover:text-primary-600">
+                    Privacy Policy
+                  </Link>
+                </span>
+              </label>
+              {errors.acceptTerms && (
+                <p className="mt-1 text-sm text-red-500">{errors.acceptTerms}</p>
+              )}
+            </div>
+
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              className="w-full"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Submitting...' : 'Request Account'}
+            </Button>
+          </form>
+
+          {/* Note */}
+          <div className="mt-6 p-4 bg-secondary-50 rounded-lg">
+            <p className="text-secondary-500 text-sm text-center">
+              <strong>Note:</strong> Accounts are verified within 24 hours.
+              You'll receive an email once approved.
+            </p>
+          </div>
+
+          {/* Footer */}
+          <div className="mt-6 text-center">
+            <p className="text-secondary-400 text-sm">
+              Already have an account?{' '}
+              <Link to="/login" className="text-primary hover:text-primary-600 font-medium">
+                Sign in
+              </Link>
+            </p>
+          </div>
+        </div>
+      </AuthLayout>
+    </>
+  );
+}
