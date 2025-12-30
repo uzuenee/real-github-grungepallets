@@ -1,5 +1,3 @@
-'use client';
-
 import { useEffect, useState, useRef } from 'react';
 import { TreePine, Recycle, Cloud, LucideIcon } from 'lucide-react';
 import { STATS } from '@/lib/constants';

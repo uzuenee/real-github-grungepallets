@@ -1,8 +1,5 @@
-'use client';
-
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { Link, useLocation } from 'react-router-dom';
 import {
     LayoutDashboard,
     Grid3X3,
@@ -28,7 +25,8 @@ const navItems = [
 ];
 
 export function PortalLayout({ children }: PortalLayoutProps) {
-    const pathname = usePathname();
+    const location = useLocation();
+    const pathname = location.pathname;
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
 
@@ -57,7 +55,7 @@ export function PortalLayout({ children }: PortalLayoutProps) {
                         >
                             {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
                         </button>
-                        <Link href="/portal" className="flex items-center">
+                        <Link to="/portal" className="flex items-center">
                             <span className="text-xl font-black text-secondary">
                                 GRUNGE <span className="text-primary">PALLETS</span>
                             </span>
@@ -70,7 +68,7 @@ export function PortalLayout({ children }: PortalLayoutProps) {
                             Hi, <strong className="text-secondary">{MOCK_USER.companyName}</strong>
                         </span>
                         <Link
-                            href="/login"
+                            to="/login"
                             className="flex items-center gap-2 text-secondary-400 hover:text-primary transition-colors"
                         >
                             <LogOut size={18} />
@@ -102,7 +100,7 @@ export function PortalLayout({ children }: PortalLayoutProps) {
                         return (
                             <Link
                                 key={item.href}
-                                href={item.href}
+                                to={item.href}
                                 className={`
                   flex items-center gap-3 px-4 py-3 rounded-lg transition-colors
                   ${isActive
@@ -127,7 +125,7 @@ export function PortalLayout({ children }: PortalLayoutProps) {
                 {/* Back to Website */}
                 <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-secondary-100">
                     <Link
-                        href="/"
+                        to="/"
                         className="flex items-center gap-2 text-secondary-400 hover:text-primary transition-colors text-sm"
                     >
                         ← Back to main website
@@ -151,7 +149,7 @@ export function PortalLayout({ children }: PortalLayoutProps) {
                             return (
                                 <Link
                                     key={item.href}
-                                    href={item.href}
+                                    to={item.href}
                                     className={`flex flex-col items-center gap-1 px-3 py-2 ${isActive ? 'text-primary' : 'text-secondary-400'
                                         }`}
                                 >

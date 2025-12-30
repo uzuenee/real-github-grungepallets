@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { Link } from 'react-router-dom';
 import { Button } from './Button';
 import { Package, ShoppingCart, FileText, Search } from 'lucide-react';
 
@@ -70,7 +70,7 @@ export function EmptyState({
             <p className="text-secondary-400 max-w-md mx-auto mb-6">{displayDescription}</p>
 
             {(displayActionLabel && displayActionHref) && (
-                <Link href={displayActionHref}>
+                <Link to={displayActionHref}>
                     <Button variant="primary">{displayActionLabel}</Button>
                 </Link>
             )}
