@@ -1,0 +1,169 @@
+import { NavLink, Service, Product, Stat, CompanyInfo } from './types';
+
+export const NAV_LINKS: NavLink[] = [
+    { label: 'Home', href: '/' },
+    { label: 'Products', href: '/products' },
+    { label: 'Services', href: '/services' },
+    { label: 'Resources', href: '/resources' },
+    { label: 'About', href: '/about' },
+    { label: 'Contact', href: '/contact' },
+];
+
+export const SERVICES: Service[] = [
+    {
+        id: 'pallet-supply',
+        icon: 'Package',
+        title: 'Pallet Supply',
+        description: 'Quality new and recycled pallets in all standard sizes. Grade A and B options available with same-week delivery.',
+        href: '/services/supply',
+    },
+    {
+        id: 'pallet-removal',
+        icon: 'Trash2',
+        title: 'Pallet Removal',
+        description: 'Free pickup of unwanted pallets. We handle the logistics so you can focus on your business.',
+        href: '/services/removal',
+    },
+    {
+        id: 'logistics',
+        icon: 'Truck',
+        title: 'Logistics',
+        description: 'Flexible delivery and pickup schedules tailored to your operations. Reliable fleet serving Metro Atlanta.',
+        href: '/services/logistics',
+    },
+];
+
+export const PRODUCTS: Product[] = [
+    {
+        id: 'gma-48x40-grade-a',
+        name: 'GMA 48x40 Grade A',
+        category: 'grade-a',
+        size: '48" x 40"',
+        dimensions: '48" × 40" × 6"',
+        woodType: 'Hardwood',
+        loadCapacity: '2,500 lbs',
+        entryType: '4-Way Entry',
+        isHeatTreated: false,
+        description: 'Premium quality pallets with minimal wear. Ideal for retail and export.',
+    },
+    {
+        id: 'gma-48x40-grade-a-ht',
+        name: 'GMA 48x40 Grade A (HT)',
+        category: 'grade-a',
+        size: '48" x 40"',
+        dimensions: '48" × 40" × 6"',
+        woodType: 'Hardwood',
+        loadCapacity: '2,500 lbs',
+        entryType: '4-Way Entry',
+        isHeatTreated: true,
+        description: 'ISPM-15 certified Grade A pallets for international shipping.',
+    },
+    {
+        id: 'gma-48x40-grade-b',
+        name: 'GMA 48x40 Grade B',
+        category: 'grade-b',
+        size: '48" x 40"',
+        dimensions: '48" × 40" × 6"',
+        woodType: 'Mixed Hardwood',
+        loadCapacity: '2,200 lbs',
+        entryType: '4-Way Entry',
+        isHeatTreated: false,
+        description: 'Cost-effective solution with minor cosmetic wear. Perfect for warehousing.',
+    },
+    {
+        id: 'gma-48x40-grade-b-ht',
+        name: 'GMA 48x40 Grade B (HT)',
+        category: 'grade-b',
+        size: '48" x 40"',
+        dimensions: '48" × 40" × 6"',
+        woodType: 'Mixed Hardwood',
+        loadCapacity: '2,200 lbs',
+        entryType: '4-Way Entry',
+        isHeatTreated: true,
+        description: 'Economical heat-treated pallets for export compliance.',
+    },
+    {
+        id: '42x42-grade-a',
+        name: '42x42 Grade A',
+        category: 'grade-a',
+        size: '42" x 42"',
+        dimensions: '42" × 42" × 6"',
+        woodType: 'Hardwood',
+        loadCapacity: '2,800 lbs',
+        entryType: '4-Way Entry',
+        isHeatTreated: false,
+        description: 'Square format ideal for chemical and paint industries.',
+    },
+    {
+        id: '48x48-grade-a',
+        name: '48x48 Grade A',
+        category: 'grade-a',
+        size: '48" x 48"',
+        dimensions: '48" × 48" × 6"',
+        woodType: 'Hardwood',
+        loadCapacity: '3,000 lbs',
+        entryType: '4-Way Entry',
+        isHeatTreated: false,
+        description: 'Large square format for drums and bulk containers.',
+    },
+    {
+        id: '48x40-block-ht',
+        name: '48x40 Block Pallet (HT)',
+        category: 'heat-treated',
+        size: '48" x 40"',
+        dimensions: '48" × 40" × 6"',
+        woodType: 'Hardwood Block',
+        loadCapacity: '2,800 lbs',
+        entryType: '4-Way Entry',
+        isHeatTreated: true,
+        description: 'Heavy-duty block construction with ISPM-15 certification.',
+    },
+    {
+        id: 'custom-pallet',
+        name: 'Custom Size Pallet',
+        category: 'custom',
+        size: 'Custom',
+        dimensions: 'Built to Spec',
+        woodType: 'Your Choice',
+        loadCapacity: 'Per Requirements',
+        entryType: '2-Way or 4-Way',
+        isHeatTreated: false,
+        description: 'Tailored pallet solutions for unique requirements and specifications.',
+    },
+];
+
+// Keep backwards compatibility for homepage preview
+export const PRODUCTS_PREVIEW = PRODUCTS.slice(0, 4);
+
+export const STATS: Stat[] = [
+    {
+        id: 'trees',
+        icon: 'TreePine',
+        value: 12450,
+        label: 'Trees Saved',
+    },
+    {
+        id: 'recycled',
+        icon: 'Recycle',
+        value: 89000,
+        label: 'Pallets Recycled',
+    },
+    {
+        id: 'co2',
+        icon: 'Cloud',
+        value: 234,
+        label: 'CO2 Reduced',
+        suffix: ' tons',
+    },
+];
+
+export const COMPANY_INFO: CompanyInfo = {
+    name: 'Grunge Pallets & Recycling Services',
+    tagline: 'Your trusted partner in sustainable pallet solutions for Metro Atlanta businesses.',
+    address: '1234 Industrial Blvd',
+    city: 'Atlanta',
+    state: 'GA',
+    zip: '30318',
+    phone: '(404) 555-7255',
+    email: 'info@grungepallets.com',
+};
