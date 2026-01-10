@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
 import { ShoppingCart } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { useCart } from '@/lib/contexts/CartContext';
@@ -62,7 +62,7 @@ export function CartPreview() {
                 </div>
 
                 {/* View Cart Button */}
-                <Link to="/portal/cart">
+                <Link href="/portal/cart">
                     <Button variant="primary" className="w-full">
                         View Cart
                     </Button>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
 import { Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { NAV_LINKS } from '@/lib/constants';
@@ -52,7 +52,7 @@ export function Header() {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center justify-between h-20">
                         {/* Logo */}
-                        <Link to="/" className="flex items-center">
+                        <Link href="/" className="flex items-center">
                             <span className="text-2xl font-black text-secondary tracking-tight">
                                 GRUNGE <span className="text-primary">PALLETS</span>
                             </span>
@@ -63,7 +63,7 @@ export function Header() {
                             {NAV_LINKS.map((link) => (
                                 <Link
                                     key={link.href}
-                                    to={link.href}
+                                    href={link.href}
                                     className="text-secondary-400 hover:text-primary font-medium transition-colors duration-200"
                                 >
                                     {link.label}
@@ -74,12 +74,12 @@ export function Header() {
                         {/* Desktop CTAs */}
                         <div className="hidden lg:flex items-center gap-4">
                             <Link
-                                to="/login"
+                                href="/login"
                                 className="text-secondary-400 hover:text-primary font-medium transition-colors duration-200"
                             >
                                 Client Login
                             </Link>
-                            <Link to="/quote">
+                            <Link href="/quote">
                                 <Button variant="primary" size="md">
                                     Get a Quote
                                 </Button>
@@ -136,7 +136,7 @@ export function Header() {
                         {NAV_LINKS.map((link) => (
                             <Link
                                 key={link.href}
-                                to={link.href}
+                                href={link.href}
                                 onClick={() => setIsMobileMenuOpen(false)}
                                 className="block px-6 py-4 text-lg text-secondary-500 hover:text-primary hover:bg-light transition-colors"
                             >
@@ -148,13 +148,13 @@ export function Header() {
                     {/* Drawer CTAs */}
                     <div className="p-6 border-t border-secondary-100 space-y-4">
                         <Link
-                            to="/login"
+                            href="/login"
                             onClick={() => setIsMobileMenuOpen(false)}
                             className="block text-center text-secondary-400 hover:text-primary font-medium py-3"
                         >
                             Client Login
                         </Link>
-                        <Link to="/quote" onClick={() => setIsMobileMenuOpen(false)} className="block">
+                        <Link href="/quote" onClick={() => setIsMobileMenuOpen(false)} className="block">
                             <Button variant="primary" size="lg" className="w-full">
                                 Get a Quote
                             </Button>
