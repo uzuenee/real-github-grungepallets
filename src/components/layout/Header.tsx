@@ -1,3 +1,5 @@
+'use client';
+
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Menu, X } from 'lucide-react';
@@ -45,9 +47,9 @@ export function Header() {
         <>
             <header
                 className={`
-          sticky top-0 z-50 bg-white transition-shadow duration-300
-          ${isScrolled ? 'shadow-lg' : 'shadow-none'}
-        `}
+                    sticky top-0 z-50 bg-white transition-shadow duration-300
+                    ${isScrolled ? 'shadow-lg' : 'shadow-none'}
+                `}
             >
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center justify-between h-20">
@@ -101,20 +103,20 @@ export function Header() {
             {/* Mobile Menu Overlay */}
             <div
                 className={`
-          fixed inset-0 z-40 bg-black/50 lg:hidden
-          transition-opacity duration-300
-          ${isMobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}
-        `}
+                    fixed inset-0 z-40 bg-black/50 lg:hidden
+                    transition-opacity duration-300
+                    ${isMobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}
+                `}
                 onClick={() => setIsMobileMenuOpen(false)}
             />
 
             {/* Mobile Menu Drawer */}
             <div
                 className={`
-          fixed top-0 right-0 z-50 h-full w-80 max-w-full bg-white shadow-2xl lg:hidden
-          transform transition-transform duration-300 ease-in-out
-          ${isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'}
-        `}
+                    fixed top-0 right-0 z-50 h-full w-80 max-w-full bg-white shadow-2xl lg:hidden
+                    transform transition-transform duration-300 ease-in-out
+                    ${isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'}
+                `}
             >
                 <div className="flex flex-col h-full">
                     {/* Drawer Header */}

@@ -6,7 +6,7 @@ export async function GET(
     request: NextRequest,
     { params }: { params: { id: string } }
 ) {
-    const supabase = createClient();
+    const supabase = await createClient();
     const orderId = params.id;
 
     console.log('Admin order detail - fetching order:', orderId);
@@ -80,7 +80,7 @@ export async function DELETE(
     request: NextRequest,
     { params }: { params: { id: string } }
 ) {
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // Get current user
     const { data: { user }, error: authError } = await supabase.auth.getUser();

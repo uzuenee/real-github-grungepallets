@@ -1,9 +1,8 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
-import { sendOrderConfirmationEmail, sendNewOrderNotificationToAdmin } from '@/lib/email';
 
 export async function GET() {
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // Get current user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -30,10 +29,20 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-    const supabase = createClient();
+    console.log('[Orders API] POST request received');
+
+    let supabase;
+    try {
+        supabase = await createClient();
+        console.log('[Orders API] Supabase client created');
+    } catch (err) {
+        console.error('[Orders API] Failed to create Supabase client:', err);
+        return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+    }
 
     // Get current user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
+    console.log('[Orders API] User:', user?.id, 'Auth error:', authError);
 
     if (authError || !user) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -46,13 +55,6 @@ export async function POST(request: NextRequest) {
         if (!items || !Array.isArray(items) || items.length === 0) {
             return NextResponse.json({ error: 'No items provided' }, { status: 400 });
         }
-
-        // Get user profile for email
-        const { data: profile } = await supabase
-            .from('profiles')
-            .select('company_name, contact_name')
-            .eq('id', user.id)
-            .single();
 
         // Create order
         const { data: order, error: orderError } = await supabase
@@ -67,6 +69,7 @@ export async function POST(request: NextRequest) {
             .single();
 
         if (orderError) {
+            console.error('[Orders API] Order creation error:', orderError);
             return NextResponse.json({ error: orderError.message }, { status: 500 });
         }
 
@@ -95,58 +98,14 @@ export async function POST(request: NextRequest) {
         if (itemsError) {
             // Rollback order if items fail
             await supabase.from('orders').delete().eq('id', order.id);
+            console.error('[Orders API] Order items error:', itemsError);
             return NextResponse.json({ error: itemsError.message }, { status: 500 });
         }
 
-        // Check if order has custom items
-        const hasCustomItems = items.some((item: { isCustom?: boolean }) => item.isCustom);
-
-        // Send email notifications (non-blocking)
-        const customerName = profile?.contact_name || profile?.company_name || 'Customer';
-        const companyName = profile?.company_name || 'Customer';
-
-        // Email to customer
-        sendOrderConfirmationEmail({
-            customerEmail: user.email || '',
-            customerName,
-            orderId: order.id,
-            items: items.map((item: { productName: string; quantity: number; price: number; isCustom?: boolean }) => ({
-                name: item.productName,
-                quantity: item.quantity,
-                price: item.price,
-                isCustom: item.isCustom,
-            })),
-            total,
-            hasCustomItems,
-        }).catch(console.error);
-
-        // Email to admin
-        sendNewOrderNotificationToAdmin({
-            orderId: order.id,
-            companyName,
-            customerEmail: user.email || '',
-            total,
-            itemCount: items.length,
-            hasCustomItems,
-        }).catch(console.error);
-
-        // Trigger n8n webhook for new order notification (optional)
-        const webhookUrl = process.env.N8N_ORDER_WEBHOOK;
-        if (webhookUrl) {
-            fetch(webhookUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    order_id: order.id,
-                    user_id: user.id,
-                    total,
-                    items: orderItems,
-                }),
-            }).catch(console.error);
-        }
-
+        console.log('[Orders API] Order created successfully:', order.id);
         return NextResponse.json({ order, success: true });
-    } catch {
+    } catch (err) {
+        console.error('[Orders API] Unexpected error:', err);
         return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
     }
 }

@@ -44,9 +44,7 @@ export function PortalLayout({ children }: PortalLayoutProps) {
         };
 
         updateCartCount();
-        // Listen for storage changes from other tabs/components
         window.addEventListener('storage', updateCartCount);
-        // Also poll for changes since same-tab changes don't trigger storage event
         const interval = setInterval(updateCartCount, 1000);
 
         return () => {
@@ -126,10 +124,10 @@ export function PortalLayout({ children }: PortalLayoutProps) {
             {/* Sidebar */}
             <aside
                 className={`
-          fixed top-16 left-0 z-40 h-[calc(100vh-4rem)] w-64 bg-white border-r border-secondary-100
-          transition-transform duration-300 ease-in-out
-          ${isMobile ? (isSidebarOpen ? 'translate-x-0' : '-translate-x-full') : 'translate-x-0'}
-        `}
+                    fixed top-16 left-0 z-40 h-[calc(100vh-4rem)] w-64 bg-white border-r border-secondary-100
+                    transition-transform duration-300 ease-in-out
+                    ${isMobile ? (isSidebarOpen ? 'translate-x-0' : '-translate-x-full') : 'translate-x-0'}
+                `}
             >
                 <nav className="p-4 space-y-1">
                     {navItems.map((item) => {
@@ -139,12 +137,12 @@ export function PortalLayout({ children }: PortalLayoutProps) {
                                 key={item.href}
                                 href={item.href}
                                 className={`
-                  flex items-center gap-3 px-4 py-3 rounded-lg transition-colors
-                  ${isActive
+                                    flex items-center gap-3 px-4 py-3 rounded-lg transition-colors
+                                    ${isActive
                                         ? 'bg-primary text-white'
                                         : 'text-secondary-500 hover:bg-secondary-50 hover:text-primary'
                                     }
-                `}
+                                `}
                             >
                                 <item.icon size={20} />
                                 <span className="font-medium">{item.label}</span>

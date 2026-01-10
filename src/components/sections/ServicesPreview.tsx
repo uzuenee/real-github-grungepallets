@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
 import { Package, Trash2, Truck, LucideIcon } from 'lucide-react';
 import { Card } from '@/components/ui';
 import { SERVICES } from '@/lib/constants';
@@ -39,7 +39,7 @@ export function ServicesPreview() {
                                     {service.description}
                                 </p>
                                 <Link
-                                    to={service.href}
+                                    href={service.href}
                                     className="inline-flex items-center text-primary font-semibold hover:text-primary-600 transition-colors group/link"
                                 >
                                     Learn More

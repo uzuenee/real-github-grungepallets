@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
 import { Badge, Button } from '@/components/ui';
 import { Package } from 'lucide-react';
 import { Product } from '@/lib/types';
@@ -49,7 +49,7 @@ export function ProductCard({ product }: ProductCardProps) {
                     </li>
                 </ul>
 
-                <Link to={`/quote?product=${product.id}`}>
+                <Link href={`/quote?product=${product.id}`}>
                     <Button variant="primary" className="w-full">
                         Request Quote
                     </Button>

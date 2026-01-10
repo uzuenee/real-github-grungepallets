@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
 import { Package } from 'lucide-react';
 import { Card, Button, Badge } from '@/components/ui';
 import { PRODUCTS_PREVIEW } from '@/lib/constants';
@@ -40,7 +40,7 @@ export function ProductsPreview() {
                                 <p className="text-sm text-secondary-400 mb-4">
                                     {product.size} | {product.entryType}
                                 </p>
-                                <Link to={`/quote?product=${product.id}`}>
+                                <Link href={`/quote?product=${product.id}`}>
                                     <Button variant="outline" size="sm" className="w-full">
                                         Request Quote
                                     </Button>
@@ -52,7 +52,7 @@ export function ProductsPreview() {
 
                 {/* View All Link */}
                 <div className="text-center mt-12">
-                    <Link to="/products">
+                    <Link href="/products">
                         <Button variant="secondary" size="lg">
                             View All Products
                         </Button>

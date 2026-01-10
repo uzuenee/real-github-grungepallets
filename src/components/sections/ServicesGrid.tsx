@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
 import { Package, Recycle, Truck } from 'lucide-react';
 import { Card, Button } from '@/components/ui';
 
@@ -81,7 +81,7 @@ export function ServicesGrid() {
                                     </li>
                                 ))}
                             </ul>
-                            <Link to={service.buttonHref}>
+                            <Link href={service.buttonHref}>
                                 <Button variant="outline" className="w-full">
                                     {service.buttonText}
                                 </Button>

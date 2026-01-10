@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
 import { FileText } from 'lucide-react';
 import { Badge } from '@/components/ui';
 
@@ -39,7 +39,7 @@ export function ArticleCard({ article }: ArticleCardProps) {
                 </p>
 
                 <Link
-                    to={`/resources/${article.slug}`}
+                    href={`/resources/${article.slug}`}
                     className="inline-flex items-center text-primary font-semibold hover:text-primary-600 transition-colors group/link"
                 >
                     Read More

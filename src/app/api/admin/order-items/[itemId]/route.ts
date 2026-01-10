@@ -1,13 +1,12 @@
-import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
-import { sendCustomPriceSetEmail } from '@/lib/email';
 
 // PATCH - Update order item price (for custom items)
 export async function PATCH(
     request: NextRequest,
     { params }: { params: { itemId: string } }
 ) {
-    const supabase = createClient();
+    const supabase = await createClient();
     const itemId = params.itemId;
 
     console.log('Updating order item price for:', itemId);
@@ -77,46 +76,6 @@ export async function PATCH(
                 .from('orders')
                 .update({ total: newTotal })
                 .eq('id', existingItem.order_id);
-        }
-
-        // Send email notification for custom price if it's a custom item
-        if (existingItem.is_custom) {
-            // Get order owner details
-            const { data: order } = await supabase
-                .from('orders')
-                .select(`
-                    id,
-                    user_id,
-                    profiles!orders_user_id_fkey (
-                        contact_name,
-                        company_name
-                    )
-                `)
-                .eq('id', existingItem.order_id)
-                .single();
-
-            if (order) {
-                // Get user email
-                const adminSupabase = createAdminClient();
-                const { data: userData } = await adminSupabase.auth.admin.getUserById(order.user_id);
-
-                if (userData?.user?.email) {
-                    // Handle profiles which may be array or object depending on Supabase response
-                    const profile = Array.isArray(order.profiles) ? order.profiles[0] : order.profiles;
-                    const customerName = profile?.contact_name || profile?.company_name || 'Customer';
-
-                    sendCustomPriceSetEmail({
-                        customerEmail: userData.user.email,
-                        customerName,
-                        orderId: order.id,
-                        itemName: existingItem.product_name,
-                        quantity: existingItem.quantity,
-                        unitPrice: unit_price,
-                        lineTotal: existingItem.quantity * unit_price,
-                        newOrderTotal: newTotal,
-                    }).catch(console.error);
-                }
-            }
         }
 
         return NextResponse.json({ success: true, item: { ...existingItem, unit_price } });

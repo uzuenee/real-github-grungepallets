@@ -4,11 +4,11 @@ Quality pallet supply, recycling, and logistics services for Metro Atlanta busin
 
 ## Tech Stack
 
+- Next.js 14
 - React 18
-- Vite
 - TypeScript
 - Tailwind CSS
-- React Router
+- Supabase (Auth & Database)
 
 ## Development
 

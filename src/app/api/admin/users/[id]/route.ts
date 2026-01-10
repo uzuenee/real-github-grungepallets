@@ -1,13 +1,12 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
-import { sendAccountApprovedEmail } from '@/lib/email';
 
 export async function PATCH(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
     const { id } = await params;
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // Get current user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -45,14 +44,18 @@ export async function PATCH(
             return NextResponse.json({ error: 'Cannot remove your own admin status' }, { status: 400 });
         }
 
-        // Get user's current profile before update to check if being approved
-        const { data: currentProfile } = await supabase
-            .from('profiles')
-            .select('approved, company_name, contact_name')
-            .eq('id', id)
-            .single();
+        // Use admin client to bypass RLS for admin operations
+        let adminSupabase;
+        try {
+            adminSupabase = createAdminClient();
+        } catch (clientErr) {
+            console.error('Failed to create admin client:', clientErr);
+            return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+        }
 
-        const { data, error } = await supabase
+        console.log('Updating profile:', id, 'with data:', updateData);
+
+        const { data, error } = await adminSupabase
             .from('profiles')
             .update(updateData)
             .eq('id', id)
@@ -64,24 +67,10 @@ export async function PATCH(
             return NextResponse.json({ error: error.message }, { status: 500 });
         }
 
-        // Send welcome email if user was just approved
-        if (approved === true && currentProfile?.approved !== true) {
-            // Get user's email from auth
-            const adminSupabase = createAdminClient();
-            const { data: userData } = await adminSupabase.auth.admin.getUserById(id);
-
-            if (userData?.user?.email) {
-                sendAccountApprovedEmail({
-                    email: userData.user.email,
-                    contactName: currentProfile?.contact_name || 'Customer',
-                    companyName: currentProfile?.company_name || 'Your Company',
-                }).catch(console.error);
-            }
-        }
-
         return NextResponse.json({ user: data });
-    } catch {
-        return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+    } catch (err) {
+        console.error('User update API error:', err);
+        return NextResponse.json({ error: 'Invalid request body', details: String(err) }, { status: 400 });
     }
 }
 
@@ -90,7 +79,7 @@ export async function DELETE(
     { params }: { params: Promise<{ id: string }> }
 ) {
     const { id: userId } = await params;
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // Get current user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
