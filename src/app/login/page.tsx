@@ -2,34 +2,32 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { AuthLayout } from '@/components/layout';
 import { Input, Button } from '@/components/ui';
-
-interface FormData {
-    email: string;
-    password: string;
-    rememberMe: boolean;
-}
+import { useAuth } from '@/lib/contexts/AuthContext';
 
 interface FormErrors {
     email?: string;
     password?: string;
+    general?: string;
 }
 
 export default function LoginPage() {
-    const [formData, setFormData] = useState<FormData>({
-        email: '',
-        password: '',
-        rememberMe: false,
-    });
+    const router = useRouter();
+    const { signIn } = useAuth();
+
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [rememberMe, setRememberMe] = useState(false);
     const [errors, setErrors] = useState<FormErrors>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const validateForm = (): boolean => {
         const newErrors: FormErrors = {};
-        if (!formData.email) newErrors.email = 'Email is required';
-        else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = 'Invalid email';
-        if (!formData.password) newErrors.password = 'Password is required';
+        if (!email) newErrors.email = 'Email is required';
+        else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) newErrors.email = 'Invalid email';
+        if (!password) newErrors.password = 'Password is required';
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -39,21 +37,20 @@ export default function LoginPage() {
         if (!validateForm()) return;
 
         setIsSubmitting(true);
-        console.log('Login submitted:', formData);
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        setIsSubmitting(false);
-        // In real app, would redirect to dashboard
-    };
+        setErrors({});
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value, type, checked } = e.target;
-        setFormData((prev) => ({
-            ...prev,
-            [name]: type === 'checkbox' ? checked : value,
-        }));
-        if (errors[name as keyof FormErrors]) {
-            setErrors((prev) => ({ ...prev, [name]: undefined }));
+        const { error } = await signIn(email, password);
+
+        if (error) {
+            setErrors({ general: error.message || 'Invalid email or password' });
+            setIsSubmitting(false);
+            return;
         }
+
+        // The middleware will handle redirecting to appropriate page based on approval status
+        // We just need to trigger a navigation to let middleware do its job
+        router.push('/portal');
+        router.refresh();
     };
 
     return (
@@ -69,14 +66,21 @@ export default function LoginPage() {
                     <p className="text-secondary-400 mt-2">Sign in to your account</p>
                 </div>
 
+                {/* Error Message */}
+                {errors.general && (
+                    <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                        <p className="text-red-600 text-sm">{errors.general}</p>
+                    </div>
+                )}
+
                 {/* Form */}
                 <form onSubmit={handleSubmit} className="space-y-5">
                     <Input
                         label="Email"
                         name="email"
                         type="email"
-                        value={formData.email}
-                        onChange={handleChange}
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
                         error={errors.email}
                         placeholder="you@company.com"
                     />
@@ -85,8 +89,8 @@ export default function LoginPage() {
                         label="Password"
                         name="password"
                         type="password"
-                        value={formData.password}
-                        onChange={handleChange}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
                         error={errors.password}
                         placeholder="••••••••"
                     />
@@ -95,9 +99,8 @@ export default function LoginPage() {
                         <label className="flex items-center gap-2 cursor-pointer">
                             <input
                                 type="checkbox"
-                                name="rememberMe"
-                                checked={formData.rememberMe}
-                                onChange={handleChange}
+                                checked={rememberMe}
+                                onChange={(e) => setRememberMe(e.target.checked)}
                                 className="w-4 h-4 rounded border-secondary-300 text-primary focus:ring-primary"
                             />
                             <span className="text-sm text-secondary-400">Remember me</span>
@@ -125,8 +128,8 @@ export default function LoginPage() {
                 <div className="mt-8 text-center">
                     <p className="text-secondary-400 text-sm">
                         Don&apos;t have an account?{' '}
-                        <Link href="/contact" className="text-primary hover:text-primary-600 font-medium">
-                            Contact us
+                        <Link href="/signup" className="text-primary hover:text-primary-600 font-medium">
+                            Request access
                         </Link>
                     </p>
                 </div>

@@ -13,24 +13,55 @@ import {
     Menu,
     X,
 } from 'lucide-react';
-import { MOCK_USER, CART_ITEMS } from '@/lib/portal-data';
+import { useAuth } from '@/lib/contexts/AuthContext';
 
 interface PortalLayoutProps {
     children: React.ReactNode;
 }
 
-const navItems = [
-    { icon: LayoutDashboard, label: 'Dashboard', href: '/portal' },
-    { icon: Grid3X3, label: 'Shop Catalog', href: '/portal/shop' },
-    { icon: ClipboardList, label: 'Order History', href: '/portal/orders' },
-    { icon: ShoppingCart, label: 'Cart', href: '/portal/cart', badge: CART_ITEMS.length },
-    { icon: Settings, label: 'Account Settings', href: '/portal/settings' },
-];
-
 export function PortalLayout({ children }: PortalLayoutProps) {
     const pathname = usePathname();
+    const { profile, signOut } = useAuth();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
+    const [cartCount, setCartCount] = useState(0);
+
+    // Sync cart count from localStorage
+    useEffect(() => {
+        const updateCartCount = () => {
+            try {
+                const saved = localStorage.getItem('grunge-pallets-cart');
+                if (saved) {
+                    const items = JSON.parse(saved);
+                    const count = items.reduce((sum: number, item: { quantity: number }) => sum + item.quantity, 0);
+                    setCartCount(count);
+                } else {
+                    setCartCount(0);
+                }
+            } catch {
+                setCartCount(0);
+            }
+        };
+
+        updateCartCount();
+        // Listen for storage changes from other tabs/components
+        window.addEventListener('storage', updateCartCount);
+        // Also poll for changes since same-tab changes don't trigger storage event
+        const interval = setInterval(updateCartCount, 1000);
+
+        return () => {
+            window.removeEventListener('storage', updateCartCount);
+            clearInterval(interval);
+        };
+    }, []);
+
+    const navItems = [
+        { icon: LayoutDashboard, label: 'Dashboard', href: '/portal' },
+        { icon: Grid3X3, label: 'Shop Catalog', href: '/portal/shop' },
+        { icon: ClipboardList, label: 'Order History', href: '/portal/orders' },
+        { icon: ShoppingCart, label: 'Cart', href: '/portal/cart', badge: cartCount },
+        { icon: Settings, label: 'Account Settings', href: '/portal/settings' },
+    ];
 
     useEffect(() => {
         const checkMobile = () => setIsMobile(window.innerWidth < 1024);
@@ -43,6 +74,10 @@ export function PortalLayout({ children }: PortalLayoutProps) {
     useEffect(() => {
         setIsSidebarOpen(false);
     }, [pathname]);
+
+    const handleLogout = async () => {
+        await signOut();
+    };
 
     return (
         <div className="min-h-screen bg-light">
@@ -67,15 +102,15 @@ export function PortalLayout({ children }: PortalLayoutProps) {
                     {/* Right: User Info + Logout */}
                     <div className="flex items-center gap-4">
                         <span className="hidden sm:block text-secondary-500">
-                            Hi, <strong className="text-secondary">{MOCK_USER.companyName}</strong>
+                            Hi, <strong className="text-secondary">{profile?.company_name || profile?.contact_name || 'User'}</strong>
                         </span>
-                        <Link
-                            href="/login"
+                        <button
+                            onClick={handleLogout}
                             className="flex items-center gap-2 text-secondary-400 hover:text-primary transition-colors"
                         >
                             <LogOut size={18} />
                             <span className="hidden sm:inline">Logout</span>
-                        </Link>
+                        </button>
                     </div>
                 </div>
             </header>
@@ -113,7 +148,7 @@ export function PortalLayout({ children }: PortalLayoutProps) {
                             >
                                 <item.icon size={20} />
                                 <span className="font-medium">{item.label}</span>
-                                {item.badge && item.badge > 0 && (
+                                {item.badge !== undefined && item.badge > 0 && (
                                     <span className={`ml-auto px-2 py-0.5 text-xs font-bold rounded-full ${isActive ? 'bg-white text-primary' : 'bg-primary text-white'
                                         }`}>
                                         {item.badge}
@@ -157,7 +192,7 @@ export function PortalLayout({ children }: PortalLayoutProps) {
                                 >
                                     <div className="relative">
                                         <item.icon size={20} />
-                                        {item.badge && item.badge > 0 && (
+                                        {item.badge !== undefined && item.badge > 0 && (
                                             <span className="absolute -top-1 -right-1 w-4 h-4 bg-primary text-white text-xs font-bold rounded-full flex items-center justify-center">
                                                 {item.badge}
                                             </span>

@@ -1,37 +1,81 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { PortalLayout } from '@/components/layout';
 import { Card, Button, Input } from '@/components/ui';
 import { User, Building, MapPin, Bell, Lock } from 'lucide-react';
-import { MOCK_USER } from '@/lib/portal-data';
+import { useAuth } from '@/lib/contexts/AuthContext';
 
 export default function PortalSettingsPage() {
+    const { profile, user, refreshProfile } = useAuth();
     const [activeTab, setActiveTab] = useState('profile');
     const [isSaving, setIsSaving] = useState(false);
     const [saved, setSaved] = useState(false);
+    const [error, setError] = useState('');
 
     const [profileData, setProfileData] = useState({
-        contactName: MOCK_USER.contactName,
-        email: MOCK_USER.email,
-        phone: MOCK_USER.phone,
+        contact_name: '',
+        phone: '',
     });
 
     const [companyData, setCompanyData] = useState({
-        companyName: MOCK_USER.companyName,
-        address: MOCK_USER.address,
-        city: MOCK_USER.city,
-        state: MOCK_USER.state,
-        zip: MOCK_USER.zip,
+        company_name: '',
+        address: '',
+        city: '',
+        state: '',
+        zip: '',
     });
+
+    // Initialize form data from profile
+    useEffect(() => {
+        if (profile) {
+            setProfileData({
+                contact_name: profile.contact_name || '',
+                phone: profile.phone || '',
+            });
+            setCompanyData({
+                company_name: profile.company_name || '',
+                address: profile.address || '',
+                city: profile.city || '',
+                state: profile.state || '',
+                zip: profile.zip || '',
+            });
+        }
+    }, [profile]);
 
     const handleSave = async () => {
         setIsSaving(true);
-        console.log('Saving:', activeTab === 'profile' ? profileData : companyData);
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        setIsSaving(false);
-        setSaved(true);
-        setTimeout(() => setSaved(false), 3000);
+        setError('');
+        setSaved(false);
+
+        try {
+            const updates = activeTab === 'profile' || activeTab === 'company' || activeTab === 'address'
+                ? { ...profileData, ...companyData }
+                : {};
+
+            if (Object.keys(updates).length > 0) {
+                const response = await fetch('/api/profile', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updates),
+                });
+
+                if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.error || 'Failed to save changes');
+                }
+
+                // Refresh the profile in context
+                await refreshProfile();
+            }
+
+            setSaved(true);
+            setTimeout(() => setSaved(false), 3000);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to save changes');
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const tabs = [
@@ -87,14 +131,15 @@ export default function PortalSettingsPage() {
                                 <div className="space-y-4 max-w-md">
                                     <Input
                                         label="Contact Name"
-                                        value={profileData.contactName}
-                                        onChange={(e) => setProfileData(prev => ({ ...prev, contactName: e.target.value }))}
+                                        value={profileData.contact_name}
+                                        onChange={(e) => setProfileData(prev => ({ ...prev, contact_name: e.target.value }))}
                                     />
                                     <Input
                                         label="Email"
                                         type="email"
-                                        value={profileData.email}
-                                        onChange={(e) => setProfileData(prev => ({ ...prev, email: e.target.value }))}
+                                        value={user?.email || ''}
+                                        disabled
+                                        className="bg-secondary-50"
                                     />
                                     <Input
                                         label="Phone"
@@ -113,8 +158,8 @@ export default function PortalSettingsPage() {
                                 <div className="space-y-4 max-w-md">
                                     <Input
                                         label="Company Name"
-                                        value={companyData.companyName}
-                                        onChange={(e) => setCompanyData(prev => ({ ...prev, companyName: e.target.value }))}
+                                        value={companyData.company_name}
+                                        onChange={(e) => setCompanyData(prev => ({ ...prev, company_name: e.target.value }))}
                                     />
                                 </div>
                             </div>
@@ -209,6 +254,9 @@ export default function PortalSettingsPage() {
                             </Button>
                             {saved && (
                                 <span className="text-green-600 font-medium">✓ Changes saved!</span>
+                            )}
+                            {error && (
+                                <span className="text-red-500 font-medium">{error}</span>
                             )}
                         </div>
                     </Card>

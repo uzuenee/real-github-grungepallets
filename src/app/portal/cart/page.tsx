@@ -57,11 +57,21 @@ function CartContent() {
                                             <td className="px-6 py-4">
                                                 <div>
                                                     <p className="font-semibold text-secondary">{item.productName}</p>
-                                                    <p className="text-xs text-secondary-400">SKU: {item.productId.toUpperCase()}</p>
+                                                    {item.isCustom && item.customSpecs ? (
+                                                        <div className="text-xs text-amber-600 mt-1">
+                                                            <span>{item.customSpecs.length}&quot; × {item.customSpecs.width}&quot;</span>
+                                                            {item.customSpecs.height && <span> × {item.customSpecs.height}&quot;</span>}
+                                                            {item.customSpecs.notes && (
+                                                                <p className="text-secondary-400 mt-0.5">Note: {item.customSpecs.notes}</p>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <p className="text-xs text-secondary-400">SKU: {item.productId.toUpperCase()}</p>
+                                                    )}
                                                 </div>
                                             </td>
-                                            <td className="px-4 py-4 text-center text-secondary-500">
-                                                ${item.price.toFixed(2)}
+                                            <td className={`px-4 py-4 text-center ${item.isCustom ? 'text-amber-600 font-medium' : 'text-secondary-500'}`}>
+                                                {item.isCustom ? 'TBD' : `$${item.price.toFixed(2)}`}
                                             </td>
                                             <td className="px-4 py-4">
                                                 <div className="flex items-center justify-center">
@@ -74,8 +84,8 @@ function CartContent() {
                                                     />
                                                 </div>
                                             </td>
-                                            <td className="px-4 py-4 text-right font-semibold text-secondary">
-                                                ${(item.price * item.quantity).toFixed(2)}
+                                            <td className={`px-4 py-4 text-right font-semibold ${item.isCustom ? 'text-amber-600' : 'text-secondary'}`}>
+                                                {item.isCustom ? 'TBD' : `$${(item.price * item.quantity).toFixed(2)}`}
                                             </td>
                                             <td className="px-4 py-4 text-center">
                                                 <button
@@ -99,8 +109,20 @@ function CartContent() {
                                     <div className="flex justify-between items-start mb-3">
                                         <div>
                                             <p className="font-semibold text-secondary">{item.productName}</p>
-                                            <p className="text-xs text-secondary-400">SKU: {item.productId.toUpperCase()}</p>
-                                            <p className="text-sm text-secondary-500 mt-1">${item.price.toFixed(2)} each</p>
+                                            {item.isCustom && item.customSpecs ? (
+                                                <div className="text-xs text-amber-600 mt-1">
+                                                    <span>{item.customSpecs.length}&quot; × {item.customSpecs.width}&quot;</span>
+                                                    {item.customSpecs.height && <span> × {item.customSpecs.height}&quot;</span>}
+                                                    {item.customSpecs.notes && (
+                                                        <p className="text-secondary-400 mt-0.5">Note: {item.customSpecs.notes}</p>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <p className="text-xs text-secondary-400">SKU: {item.productId.toUpperCase()}</p>
+                                            )}
+                                            <p className={`text-sm mt-1 ${item.isCustom ? 'text-amber-600 font-medium' : 'text-secondary-500'}`}>
+                                                {item.isCustom ? 'Price: TBD' : `$${item.price.toFixed(2)} each`}
+                                            </p>
                                         </div>
                                         <button
                                             onClick={() => removeItem(item.productId)}
@@ -117,8 +139,8 @@ function CartContent() {
                                             onChange={(e) => updateQuantity(item.productId, parseInt(e.target.value) || 1)}
                                             className="w-20 text-center px-2 py-1.5 border border-secondary-100 rounded-lg font-medium text-secondary"
                                         />
-                                        <p className="font-bold text-secondary">
-                                            ${(item.price * item.quantity).toFixed(2)}
+                                        <p className={`font-bold ${item.isCustom ? 'text-amber-600' : 'text-secondary'}`}>
+                                            {item.isCustom ? 'TBD' : `$${(item.price * item.quantity).toFixed(2)}`}
                                         </p>
                                     </div>
                                 </div>

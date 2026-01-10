@@ -1,21 +1,61 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { PortalLayout } from '@/components/layout';
 import { Card, Button, Badge, ToastProvider, useToast } from '@/components/ui';
 import { ArrowLeft, RefreshCw, Package } from 'lucide-react';
 import { CartProvider, useCart } from '@/lib/contexts/CartContext';
-import { MOCK_ORDERS, MOCK_USER } from '@/lib/portal-data';
+import { useAuth } from '@/lib/contexts/AuthContext';
+import { Order } from '@/lib/supabase/types';
+
+interface OrderItem {
+    id: string;
+    product_id: string;
+    product_name: string;
+    quantity: number;
+    unit_price: number;
+}
+
+interface OrderWithItems extends Order {
+    order_items: OrderItem[];
+}
 
 function OrderDetailContent() {
     const params = useParams();
     const router = useRouter();
     const { addToCart } = useCart();
     const { showToast } = useToast();
+    const { profile } = useAuth();
 
     const orderId = params.id as string;
-    const order = MOCK_ORDERS.find(o => o.id === orderId);
+    const [order, setOrder] = useState<OrderWithItems | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [notFound, setNotFound] = useState(false);
+
+    useEffect(() => {
+        const fetchOrder = async () => {
+            try {
+                const response = await fetch(`/api/orders/${orderId}`);
+                if (response.ok) {
+                    const result = await response.json();
+                    setOrder(result.order);
+                } else if (response.status === 404) {
+                    setNotFound(true);
+                }
+            } catch (err) {
+                console.error('Failed to fetch order:', err);
+                setNotFound(true);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        if (orderId) {
+            fetchOrder();
+        }
+    }, [orderId]);
 
     const getStatusColor = (status: string) => {
         switch (status) {
@@ -31,26 +71,36 @@ function OrderDetailContent() {
     const handleReorderAll = () => {
         if (!order) return;
 
-        order.items.forEach(item => {
-            const price = parseFloat(item.price.replace('$', ''));
+        order.order_items.forEach(item => {
             addToCart(
                 {
-                    productId: item.productId,
-                    productName: item.productName,
-                    price,
+                    productId: item.product_id,
+                    productName: item.product_name,
+                    price: item.unit_price,
                 },
                 item.quantity
             );
         });
 
-        showToast(`${order.items.length} item(s) added to cart`, 'success');
+        showToast(`${order.order_items.length} item(s) added to cart`, 'success');
 
         setTimeout(() => {
             router.push('/portal/cart');
         }, 500);
     };
 
-    if (!order) {
+    if (loading) {
+        return (
+            <PortalLayout>
+                <div className="text-center py-16">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                    <p className="text-secondary-400 mt-4">Loading order details...</p>
+                </div>
+            </PortalLayout>
+        );
+    }
+
+    if (notFound || !order) {
         return (
             <PortalLayout>
                 <div className="text-center py-16">
@@ -66,9 +116,8 @@ function OrderDetailContent() {
     }
 
     // Calculate order subtotal
-    const subtotal = order.items.reduce((sum, item) => {
-        const price = parseFloat(item.price.replace('$', ''));
-        return sum + price * item.quantity;
+    const subtotal = order.order_items.reduce((sum, item) => {
+        return sum + item.unit_price * item.quantity;
     }, 0);
 
     return (
@@ -85,8 +134,16 @@ function OrderDetailContent() {
             {/* Order Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
                 <div>
-                    <h1 className="text-2xl sm:text-3xl font-bold text-secondary">{order.id}</h1>
-                    <p className="text-secondary-400 mt-1">Placed on {order.date}</p>
+                    <h1 className="text-2xl sm:text-3xl font-bold text-secondary">
+                        Order #{order.id.slice(0, 8)}...
+                    </h1>
+                    <p className="text-secondary-400 mt-1">
+                        Placed on {new Date(order.created_at).toLocaleDateString('en-US', {
+                            month: 'long',
+                            day: 'numeric',
+                            year: 'numeric'
+                        })}
+                    </p>
                 </div>
                 <Badge variant={getStatusColor(order.status) as 'success' | 'warning' | 'info'} className="self-start sm:self-center">
                     {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
@@ -101,8 +158,8 @@ function OrderDetailContent() {
                             <h2 className="font-bold text-secondary">Order Items</h2>
                         </div>
                         <div className="divide-y divide-secondary-100">
-                            {order.items.map((item, idx) => (
-                                <div key={idx} className="p-6 flex flex-col sm:flex-row sm:items-center gap-4">
+                            {order.order_items.map((item) => (
+                                <div key={item.id} className="p-6 flex flex-col sm:flex-row sm:items-center gap-4">
                                     {/* Product Icon */}
                                     <div className="flex-shrink-0 w-16 h-16 bg-secondary-50 rounded-lg flex items-center justify-center">
                                         <Package size={28} className="text-secondary-300" />
@@ -110,17 +167,17 @@ function OrderDetailContent() {
 
                                     {/* Product Info */}
                                     <div className="flex-1">
-                                        <h3 className="font-semibold text-secondary">{item.productName}</h3>
-                                        <p className="text-sm text-secondary-400">SKU: {item.productId.toUpperCase()}</p>
+                                        <h3 className="font-semibold text-secondary">{item.product_name}</h3>
+                                        <p className="text-sm text-secondary-400">SKU: {item.product_id.toUpperCase()}</p>
                                     </div>
 
                                     {/* Quantity & Price */}
                                     <div className="text-right">
                                         <p className="text-secondary-500">
-                                            {item.quantity} × {item.price}
+                                            {item.quantity} × ${item.unit_price.toFixed(2)}
                                         </p>
                                         <p className="font-bold text-secondary">
-                                            ${(parseFloat(item.price.replace('$', '')) * item.quantity).toFixed(2)}
+                                            ${(item.unit_price * item.quantity).toFixed(2)}
                                         </p>
                                     </div>
                                 </div>
@@ -152,7 +209,7 @@ function OrderDetailContent() {
                         <div className="border-t border-secondary-100 pt-4 mt-4">
                             <div className="flex justify-between">
                                 <span className="font-bold text-secondary">Total</span>
-                                <span className="font-bold text-primary">{order.total}</span>
+                                <span className="font-bold text-primary">${order.total.toFixed(2)}</span>
                             </div>
                         </div>
                     </Card>
@@ -161,18 +218,22 @@ function OrderDetailContent() {
                     <Card padding="lg">
                         <h2 className="font-bold text-secondary mb-4">Delivery Address</h2>
                         <div className="text-secondary-500 text-sm space-y-1">
-                            <p className="font-medium text-secondary">{MOCK_USER.companyName}</p>
-                            <p>{MOCK_USER.contactName}</p>
-                            <p>{MOCK_USER.address}</p>
-                            <p>{MOCK_USER.city}, {MOCK_USER.state} {MOCK_USER.zip}</p>
+                            <p className="font-medium text-secondary">{profile?.company_name || 'Company'}</p>
+                            <p>{profile?.contact_name || 'Contact'}</p>
+                            <p>{profile?.address || 'Address'}</p>
+                            <p>{profile?.city || 'City'}, {profile?.state || 'State'} {profile?.zip || 'ZIP'}</p>
                         </div>
                     </Card>
 
                     {/* Delivery Status */}
-                    {order.deliveryDate && (
+                    {order.delivery_date && (
                         <Card padding="lg" className="bg-green-50 border-green-200">
                             <p className="text-green-700 font-medium">
-                                ✓ Delivered on {order.deliveryDate}
+                                ✓ Delivered on {new Date(order.delivery_date).toLocaleDateString('en-US', {
+                                    month: 'long',
+                                    day: 'numeric',
+                                    year: 'numeric'
+                                })}
                             </p>
                         </Card>
                     )}

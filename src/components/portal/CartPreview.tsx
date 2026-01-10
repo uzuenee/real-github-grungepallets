@@ -26,13 +26,21 @@ export function CartPreview() {
                 {/* Items Preview */}
                 <div className="space-y-2 mb-4 max-h-32 overflow-y-auto">
                     {items.slice(0, 3).map((item) => (
-                        <div key={item.productId} className="flex justify-between text-sm">
-                            <span className="text-secondary-400 truncate flex-1 mr-2">
-                                {item.productName} × {item.quantity}
-                            </span>
-                            <span className="text-secondary font-medium">
-                                ${(item.price * item.quantity).toFixed(2)}
-                            </span>
+                        <div key={item.productId} className="text-sm">
+                            <div className="flex justify-between">
+                                <span className="text-secondary-400 truncate flex-1 mr-2">
+                                    {item.productName} × {item.quantity}
+                                </span>
+                                <span className={`font-medium ${item.isCustom ? 'text-amber-600' : 'text-secondary'}`}>
+                                    {item.isCustom ? 'TBD' : `$${(item.price * item.quantity).toFixed(2)}`}
+                                </span>
+                            </div>
+                            {item.isCustom && item.customSpecs && (
+                                <p className="text-xs text-amber-500 mt-0.5">
+                                    {item.customSpecs.length}&quot; × {item.customSpecs.width}&quot;
+                                    {item.customSpecs.height && ` × ${item.customSpecs.height}"`}
+                                </p>
+                            )}
                         </div>
                     ))}
                     {items.length > 3 && (

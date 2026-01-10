@@ -112,8 +112,24 @@ export function QuoteForm() {
         if (!isValid) return;
 
         setIsSubmitting(true);
-        console.log('Quote Form Submitted:', quoteType === 'buy' ? buyData : sellData);
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+
+        try {
+            const webhookUrl = process.env.NEXT_PUBLIC_N8N_QUOTE_WEBHOOK;
+            if (webhookUrl) {
+                await fetch(webhookUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        type: quoteType,
+                        data: quoteType === 'buy' ? buyData : sellData,
+                        submitted_at: new Date().toISOString(),
+                    }),
+                });
+            }
+        } catch (error) {
+            console.error('Failed to submit quote:', error);
+        }
+
         setIsSubmitting(false);
         setIsSubmitted(true);
     };
@@ -237,8 +253,8 @@ export function QuoteForm() {
                                         type="button"
                                         onClick={() => setBuyData((prev) => ({ ...prev, frequency: freq }))}
                                         className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${buyData.frequency === freq
-                                                ? 'bg-primary text-white'
-                                                : 'bg-secondary-50 text-secondary-500 hover:bg-secondary-100'
+                                            ? 'bg-primary text-white'
+                                            : 'bg-secondary-50 text-secondary-500 hover:bg-secondary-100'
                                             }`}
                                     >
                                         {freq === 'one-time' ? 'One-time' : freq.charAt(0).toUpperCase() + freq.slice(1)}

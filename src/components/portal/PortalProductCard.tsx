@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Package, ShoppingCart, Check } from 'lucide-react';
 import { Badge, Button } from '@/components/ui';
-import { useCart } from '@/lib/contexts/CartContext';
+import { useCart, CustomSpecs } from '@/lib/contexts/CartContext';
 
 interface PortalProduct {
     id: string;
@@ -13,6 +13,7 @@ interface PortalProduct {
     price: number;
     inStock: boolean;
     isHeatTreated?: boolean;
+    category?: 'grade-a' | 'grade-b' | 'heat-treated' | 'custom';
 }
 
 interface PortalProductCardProps {
@@ -24,18 +25,45 @@ export function PortalProductCard({ product }: PortalProductCardProps) {
     const [isAdded, setIsAdded] = useState(false);
     const { addToCart } = useCart();
 
+    const isCustom = product.category === 'custom' || product.id === 'custom-pallet';
+
+    // Custom specs state
+    const [customSpecs, setCustomSpecs] = useState<CustomSpecs>({
+        length: '',
+        width: '',
+        height: '',
+        notes: ''
+    });
+    const [customError, setCustomError] = useState('');
+
     const handleAddToCart = () => {
+        // Validate custom specs if it's a custom product
+        if (isCustom) {
+            if (!customSpecs.length || !customSpecs.width) {
+                setCustomError('Please enter length and width');
+                return;
+            }
+            setCustomError('');
+        }
+
         addToCart(
             {
                 productId: product.id,
-                productName: product.name,
-                price: product.price,
+                productName: isCustom
+                    ? `Custom Pallet (${customSpecs.length}" × ${customSpecs.width}"${customSpecs.height ? ` × ${customSpecs.height}"` : ''})`
+                    : product.name,
+                price: isCustom ? 0 : product.price, // TBD pricing for custom
+                isCustom,
+                customSpecs: isCustom ? customSpecs : undefined,
             },
             quantity
         );
         setIsAdded(true);
         setTimeout(() => setIsAdded(false), 2000);
         setQuantity(1);
+        if (isCustom) {
+            setCustomSpecs({ length: '', width: '', height: '', notes: '' });
+        }
     };
 
     return (
@@ -63,13 +91,74 @@ export function PortalProductCard({ product }: PortalProductCardProps) {
                 </h3>
                 <p className="text-sm text-secondary-400 mb-3">{product.size}</p>
 
-                {/* Price */}
+                {/* Price - show TBD for custom */}
                 <div className="flex items-baseline gap-1 mb-4">
-                    <span className="text-2xl font-bold text-primary">
-                        ${product.price.toFixed(2)}
-                    </span>
-                    <span className="text-secondary-400 text-sm">/ unit</span>
+                    {isCustom ? (
+                        <span className="text-lg font-bold text-amber-600">Quote Required</span>
+                    ) : (
+                        <>
+                            <span className="text-2xl font-bold text-primary">
+                                ${product.price.toFixed(2)}
+                            </span>
+                            <span className="text-secondary-400 text-sm">/ unit</span>
+                        </>
+                    )}
                 </div>
+
+                {/* Custom Dimensions Form - only for custom products */}
+                {isCustom && (
+                    <div className="space-y-3 mb-4 p-3 bg-amber-50 rounded-lg border border-amber-100">
+                        <p className="text-xs font-medium text-amber-700 mb-2">Enter Custom Dimensions</p>
+                        <div className="grid grid-cols-3 gap-2">
+                            <div>
+                                <label className="text-xs text-secondary-500 block mb-1">Length&quot;</label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    placeholder="48"
+                                    value={customSpecs.length}
+                                    onChange={(e) => setCustomSpecs(prev => ({ ...prev, length: e.target.value }))}
+                                    className="w-full px-2 py-1.5 text-sm rounded border border-secondary-200 focus:outline-none focus:ring-2 focus:ring-primary"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs text-secondary-500 block mb-1">Width&quot;</label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    placeholder="40"
+                                    value={customSpecs.width}
+                                    onChange={(e) => setCustomSpecs(prev => ({ ...prev, width: e.target.value }))}
+                                    className="w-full px-2 py-1.5 text-sm rounded border border-secondary-200 focus:outline-none focus:ring-2 focus:ring-primary"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs text-secondary-500 block mb-1">Height&quot;</label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    placeholder="6"
+                                    value={customSpecs.height}
+                                    onChange={(e) => setCustomSpecs(prev => ({ ...prev, height: e.target.value }))}
+                                    className="w-full px-2 py-1.5 text-sm rounded border border-secondary-200 focus:outline-none focus:ring-2 focus:ring-primary"
+                                />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="text-xs text-secondary-500 block mb-1">Special Notes (optional)</label>
+                            <textarea
+                                placeholder="Any special requirements..."
+                                value={customSpecs.notes}
+                                onChange={(e) => setCustomSpecs(prev => ({ ...prev, notes: e.target.value }))}
+                                rows={2}
+                                className="w-full px-2 py-1.5 text-sm rounded border border-secondary-200 focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                            />
+                        </div>
+                        {customError && (
+                            <p className="text-xs text-red-500">{customError}</p>
+                        )}
+                    </div>
+                )}
 
                 {/* Quantity Input */}
                 <div className="flex items-center gap-3 mb-4">
@@ -98,7 +187,7 @@ export function PortalProductCard({ product }: PortalProductCardProps) {
                     ) : (
                         <>
                             <ShoppingCart size={18} className="mr-2" />
-                            Add to Order
+                            {isCustom ? 'Request Quote' : 'Add to Order'}
                         </>
                     )}
                 </Button>
@@ -106,3 +195,4 @@ export function PortalProductCard({ product }: PortalProductCardProps) {
         </div>
     );
 }
+

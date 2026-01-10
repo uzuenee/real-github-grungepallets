@@ -1,13 +1,25 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { PortalLayout } from '@/components/layout';
 import { Card, Button, Badge, ToastProvider, useToast } from '@/components/ui';
-import { RefreshCw, Filter, ChevronDown } from 'lucide-react';
+import { RefreshCw, Filter, ChevronDown, Package } from 'lucide-react';
 import { CartProvider, useCart } from '@/lib/contexts/CartContext';
-import { MOCK_ORDERS, Order } from '@/lib/portal-data';
+import { Order, OrderStatus } from '@/lib/supabase/types';
+
+interface OrderItem {
+    id: string;
+    product_id: string;
+    product_name: string;
+    quantity: number;
+    unit_price: number;
+}
+
+interface OrderWithItems extends Order {
+    order_items: OrderItem[];
+}
 
 type StatusFilter = 'all' | 'pending' | 'processing' | 'shipped' | 'delivered';
 
@@ -24,17 +36,37 @@ function OrdersContent() {
     const { addToCart } = useCart();
     const { showToast } = useToast();
 
+    const [orders, setOrders] = useState<OrderWithItems[]>([]);
+    const [loading, setLoading] = useState(true);
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
     const [showFilters, setShowFilters] = useState(false);
     const [displayCount, setDisplayCount] = useState(10);
 
+    useEffect(() => {
+        const fetchOrders = async () => {
+            try {
+                const response = await fetch('/api/orders');
+                const result = await response.json();
+                if (response.ok && result.orders) {
+                    setOrders(result.orders);
+                }
+            } catch (err) {
+                console.error('Failed to fetch orders:', err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchOrders();
+    }, []);
+
     const filteredOrders = useMemo(() => {
-        let orders = [...MOCK_ORDERS];
+        let filtered = [...orders];
         if (statusFilter !== 'all') {
-            orders = orders.filter(o => o.status === statusFilter);
+            filtered = filtered.filter(o => o.status === statusFilter);
         }
-        return orders;
-    }, [statusFilter]);
+        return filtered;
+    }, [orders, statusFilter]);
 
     const displayedOrders = filteredOrders.slice(0, displayCount);
     const hasMore = displayCount < filteredOrders.length;
@@ -50,21 +82,20 @@ function OrdersContent() {
         }
     };
 
-    const handleReorder = (order: Order) => {
+    const handleReorder = (order: OrderWithItems) => {
         // Add all items from order to cart
-        order.items.forEach(item => {
-            const price = parseFloat(item.price.replace('$', ''));
+        order.order_items.forEach(item => {
             addToCart(
                 {
-                    productId: item.productId,
-                    productName: item.productName,
-                    price,
+                    productId: item.product_id,
+                    productName: item.product_name,
+                    price: item.unit_price,
                 },
                 item.quantity
             );
         });
 
-        showToast(`${order.items.length} item(s) added to cart`, 'success');
+        showToast(`${order.order_items.length} item(s) added to cart`, 'success');
 
         // Redirect to cart after brief delay
         setTimeout(() => {
@@ -123,7 +154,12 @@ function OrdersContent() {
 
             {/* Orders Table */}
             <Card padding="none" className="overflow-hidden">
-                {displayedOrders.length > 0 ? (
+                {loading ? (
+                    <div className="text-center py-16">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                        <p className="text-secondary-400 mt-4">Loading orders...</p>
+                    </div>
+                ) : displayedOrders.length > 0 ? (
                     <>
                         {/* Desktop Table */}
                         <div className="hidden md:block overflow-x-auto">
@@ -143,15 +179,17 @@ function OrdersContent() {
                                         <tr key={order.id} className="hover:bg-secondary-50/50 transition-colors">
                                             <td className="px-6 py-4">
                                                 <Link href={`/portal/orders/${order.id}`} className="font-semibold text-primary hover:text-primary-600">
-                                                    {order.id}
+                                                    {order.id.slice(0, 8)}...
                                                 </Link>
                                             </td>
-                                            <td className="px-4 py-4 text-secondary-500">{order.date}</td>
+                                            <td className="px-4 py-4 text-secondary-500">
+                                                {new Date(order.created_at).toLocaleDateString()}
+                                            </td>
                                             <td className="px-4 py-4 text-center text-secondary-500">
-                                                {order.items.length}
+                                                {order.order_items?.length || 0}
                                             </td>
                                             <td className="px-4 py-4 text-right font-semibold text-secondary">
-                                                {order.total}
+                                                ${order.total.toFixed(2)}
                                             </td>
                                             <td className="px-4 py-4 text-center">
                                                 <Badge variant={getStatusColor(order.status) as 'success' | 'warning' | 'info'}>
@@ -177,9 +215,11 @@ function OrdersContent() {
                                     <div className="flex items-start justify-between mb-3">
                                         <div>
                                             <Link href={`/portal/orders/${order.id}`} className="font-semibold text-primary hover:text-primary-600">
-                                                {order.id}
+                                                {order.id.slice(0, 8)}...
                                             </Link>
-                                            <p className="text-sm text-secondary-400">{order.date}</p>
+                                            <p className="text-sm text-secondary-400">
+                                                {new Date(order.created_at).toLocaleDateString()}
+                                            </p>
                                         </div>
                                         <Badge variant={getStatusColor(order.status) as 'success' | 'warning' | 'info'}>
                                             {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
@@ -187,7 +227,7 @@ function OrdersContent() {
                                     </div>
                                     <div className="flex items-center justify-between">
                                         <div className="text-sm text-secondary-500">
-                                            {order.items.length} item{order.items.length !== 1 ? 's' : ''} • <span className="font-semibold text-secondary">{order.total}</span>
+                                            {order.order_items?.length || 0} item{(order.order_items?.length || 0) !== 1 ? 's' : ''} • <span className="font-semibold text-secondary">${order.total.toFixed(2)}</span>
                                         </div>
                                         <Button variant="outline" size="sm" onClick={() => handleReorder(order)}>
                                             <RefreshCw size={14} className="mr-1" />
@@ -200,7 +240,17 @@ function OrdersContent() {
                     </>
                 ) : (
                     <div className="text-center py-16">
-                        <p className="text-secondary-400">No orders found matching your filters.</p>
+                        <Package size={48} className="text-secondary-200 mx-auto mb-4" />
+                        <p className="text-secondary-400">
+                            {orders.length === 0
+                                ? 'No orders yet. Place your first order!'
+                                : 'No orders found matching your filters.'}
+                        </p>
+                        {orders.length === 0 && (
+                            <Link href="/portal/shop" className="inline-block mt-4">
+                                <Button variant="primary">Shop Now</Button>
+                            </Link>
+                        )}
                     </div>
                 )}
             </Card>
@@ -215,9 +265,11 @@ function OrdersContent() {
             )}
 
             {/* Summary */}
-            <p className="text-sm text-secondary-400 text-center mt-4">
-                Showing {displayedOrders.length} of {filteredOrders.length} orders
-            </p>
+            {!loading && filteredOrders.length > 0 && (
+                <p className="text-sm text-secondary-400 text-center mt-4">
+                    Showing {displayedOrders.length} of {filteredOrders.length} orders
+                </p>
+            )}
         </PortalLayout>
     );
 }

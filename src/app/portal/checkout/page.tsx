@@ -6,15 +6,15 @@ import { useRouter } from 'next/navigation';
 import { PortalLayout } from '@/components/layout';
 import { Card, Button } from '@/components/ui';
 import { CartProvider, useCart } from '@/lib/contexts/CartContext';
-import { MOCK_USER } from '@/lib/portal-data';
-import { ShoppingBag, CreditCard, FileText } from 'lucide-react';
+import { useAuth } from '@/lib/contexts/AuthContext';
+import { ShoppingBag, FileText } from 'lucide-react';
 
 function CheckoutContent() {
     const router = useRouter();
     const { items, getTotal, clearCart } = useCart();
+    const { profile } = useAuth();
     const { subtotal, delivery, total } = getTotal();
 
-    const [paymentMethod, setPaymentMethod] = useState<'invoice' | 'card'>('invoice');
     const [deliveryNotes, setDeliveryNotes] = useState('');
     const [acceptTerms, setAcceptTerms] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -44,20 +44,35 @@ function CheckoutContent() {
         setIsSubmitting(true);
         setError('');
 
-        // Simulate order submission
-        console.log('Order submitted:', {
-            items,
-            total,
-            paymentMethod,
-            deliveryNotes,
-            deliveryAddress: MOCK_USER,
-        });
+        try {
+            const response = await fetch('/api/orders', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    items: items.map(item => ({
+                        productId: item.productId,
+                        productName: item.productName,
+                        quantity: item.quantity,
+                        price: item.price,
+                        isCustom: item.isCustom,
+                        customSpecs: item.customSpecs,
+                    })),
+                    total,
+                    delivery_notes: deliveryNotes,
+                }),
+            });
 
-        await new Promise(resolve => setTimeout(resolve, 1500));
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.error || 'Failed to submit order');
+            }
 
-        // Clear cart and redirect
-        clearCart();
-        router.push('/portal/order-confirmation');
+            clearCart();
+            router.push('/portal/order-confirmation');
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to submit order');
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -77,11 +92,11 @@ function CheckoutContent() {
                     <Card padding="lg">
                         <h2 className="text-xl font-bold text-secondary mb-4">Delivery Address</h2>
                         <div className="bg-secondary-50 rounded-lg p-4">
-                            <p className="font-semibold text-secondary">{MOCK_USER.companyName}</p>
-                            <p className="text-secondary-500">{MOCK_USER.contactName}</p>
-                            <p className="text-secondary-500">{MOCK_USER.address}</p>
-                            <p className="text-secondary-500">{MOCK_USER.city}, {MOCK_USER.state} {MOCK_USER.zip}</p>
-                            <p className="text-secondary-500 mt-2">{MOCK_USER.phone}</p>
+                            <p className="font-semibold text-secondary">{profile?.company_name || 'Company Name'}</p>
+                            <p className="text-secondary-500">{profile?.contact_name || 'Contact Name'}</p>
+                            <p className="text-secondary-500">{profile?.address || 'Address'}</p>
+                            <p className="text-secondary-500">{profile?.city || 'City'}, {profile?.state || 'State'} {profile?.zip || 'ZIP'}</p>
+                            <p className="text-secondary-500 mt-2">{profile?.phone || 'Phone'}</p>
                         </div>
                         <Link href="/portal/settings" className="text-primary text-sm font-medium mt-3 inline-block hover:text-primary-600">
                             Edit address →
@@ -103,57 +118,12 @@ function CheckoutContent() {
                     {/* Payment Method */}
                     <Card padding="lg">
                         <h2 className="text-xl font-bold text-secondary mb-4">Payment Method</h2>
-                        <div className="space-y-3">
-                            <label
-                                className={`flex items-center gap-4 p-4 rounded-lg border-2 cursor-pointer transition-colors ${paymentMethod === 'invoice'
-                                    ? 'border-primary bg-primary/5'
-                                    : 'border-secondary-100 hover:border-secondary-200'
-                                    }`}
-                            >
-                                <input
-                                    type="radio"
-                                    name="payment"
-                                    value="invoice"
-                                    checked={paymentMethod === 'invoice'}
-                                    onChange={() => setPaymentMethod('invoice')}
-                                    className="w-5 h-5 text-primary focus:ring-primary"
-                                />
-                                <FileText size={24} className={paymentMethod === 'invoice' ? 'text-primary' : 'text-secondary-400'} />
-                                <div className="flex-1">
-                                    <p className="font-semibold text-secondary">Pay by Invoice (Net 30)</p>
-                                    <p className="text-sm text-secondary-400">Receive invoice after delivery</p>
-                                </div>
-                            </label>
-
-                            <label
-                                className={`flex items-center gap-4 p-4 rounded-lg border-2 cursor-pointer transition-colors ${paymentMethod === 'card'
-                                    ? 'border-primary bg-primary/5'
-                                    : 'border-secondary-100 hover:border-secondary-200'
-                                    }`}
-                            >
-                                <input
-                                    type="radio"
-                                    name="payment"
-                                    value="card"
-                                    checked={paymentMethod === 'card'}
-                                    onChange={() => setPaymentMethod('card')}
-                                    className="w-5 h-5 text-primary focus:ring-primary"
-                                />
-                                <CreditCard size={24} className={paymentMethod === 'card' ? 'text-primary' : 'text-secondary-400'} />
-                                <div className="flex-1">
-                                    <p className="font-semibold text-secondary">Credit Card</p>
-                                    <p className="text-sm text-secondary-400">Pay now with card</p>
-                                </div>
-                            </label>
-
-                            {paymentMethod === 'card' && (
-                                <div className="mt-4 p-4 bg-secondary-50 rounded-lg">
-                                    <p className="text-secondary-500 text-center">
-                                        🚧 Credit card payment processing coming soon.
-                                        Please select &quot;Pay by Invoice&quot; for now.
-                                    </p>
-                                </div>
-                            )}
+                        <div className="flex items-center gap-4 p-4 rounded-lg border-2 border-primary bg-primary/5">
+                            <FileText size={24} className="text-primary" />
+                            <div className="flex-1">
+                                <p className="font-semibold text-secondary">Pay by Invoice (Net 30)</p>
+                                <p className="text-sm text-secondary-400">Receive invoice after delivery</p>
+                            </div>
                         </div>
                     </Card>
 
@@ -191,17 +161,40 @@ function CheckoutContent() {
                         {/* Order Items */}
                         <div className="space-y-3 mb-6 max-h-64 overflow-y-auto">
                             {items.map((item) => (
-                                <div key={item.productId} className="flex justify-between text-sm">
-                                    <div className="flex-1">
-                                        <p className="text-secondary">{item.productName}</p>
-                                        <p className="text-secondary-400">Qty: {item.quantity} × ${item.price.toFixed(2)}</p>
+                                <div key={item.productId} className="text-sm">
+                                    <div className="flex justify-between">
+                                        <div className="flex-1">
+                                            <p className="text-secondary">{item.productName}</p>
+                                            {item.isCustom ? (
+                                                <p className="text-amber-600">Qty: {item.quantity} × Quote Required</p>
+                                            ) : (
+                                                <p className="text-secondary-400">Qty: {item.quantity} × ${item.price.toFixed(2)}</p>
+                                            )}
+                                        </div>
+                                        <p className={`font-medium ${item.isCustom ? 'text-amber-600' : 'text-secondary'}`}>
+                                            {item.isCustom ? 'TBD' : `$${(item.price * item.quantity).toFixed(2)}`}
+                                        </p>
                                     </div>
-                                    <p className="font-medium text-secondary">
-                                        ${(item.price * item.quantity).toFixed(2)}
-                                    </p>
+                                    {item.isCustom && item.customSpecs && (
+                                        <div className="mt-1 p-2 bg-amber-50 rounded text-xs text-amber-700">
+                                            <span className="font-medium">Dimensions:</span> {item.customSpecs.length}&quot; × {item.customSpecs.width}&quot;
+                                            {item.customSpecs.height && ` × ${item.customSpecs.height}"`}
+                                            {item.customSpecs.notes && (
+                                                <p className="mt-1"><span className="font-medium">Notes:</span> {item.customSpecs.notes}</p>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>
+
+                        {/* Custom Items Notice */}
+                        {items.some(item => item.isCustom) && (
+                            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+                                <p className="text-sm text-amber-700 font-medium">⚠️ Order contains custom items</p>
+                                <p className="text-xs text-amber-600 mt-1">Final pricing will be confirmed by our team after order review.</p>
+                            </div>
+                        )}
 
                         <div className="border-t border-secondary-100 pt-4 space-y-3 mb-6">
                             <div className="flex justify-between text-secondary-500">

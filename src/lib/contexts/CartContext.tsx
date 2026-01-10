@@ -2,11 +2,20 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
+export interface CustomSpecs {
+    length: string;
+    width: string;
+    height?: string;
+    notes?: string;
+}
+
 export interface CartItem {
     productId: string;
     productName: string;
     price: number;
     quantity: number;
+    isCustom?: boolean;
+    customSpecs?: CustomSpecs;
 }
 
 interface CartContextType {
@@ -50,6 +59,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     const addToCart = (item: Omit<CartItem, 'quantity'>, quantity: number) => {
         setItems(prev => {
+            // Custom products always get added as new items (each has unique specs)
+            if (item.isCustom) {
+                const uniqueId = `${item.productId}-${Date.now()}`;
+                return [...prev, { ...item, productId: uniqueId, quantity }];
+            }
+
+            // Regular products get merged by productId
             const existing = prev.find(i => i.productId === item.productId);
             if (existing) {
                 return prev.map(i =>

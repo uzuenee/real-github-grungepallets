@@ -4,12 +4,17 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { AuthLayout } from '@/components/layout';
 import { Input, Button } from '@/components/ui';
+import { useAuth } from '@/lib/contexts/AuthContext';
 
 interface FormData {
     companyName: string;
     contactName: string;
     email: string;
     phone: string;
+    address: string;
+    city: string;
+    state: string;
+    zip: string;
     password: string;
     confirmPassword: string;
     acceptTerms: boolean;
@@ -20,11 +25,17 @@ interface FormErrors {
 }
 
 export default function SignupPage() {
+    const { signUp } = useAuth();
+
     const [formData, setFormData] = useState<FormData>({
         companyName: '',
         contactName: '',
         email: '',
         phone: '',
+        address: '',
+        city: '',
+        state: '',
+        zip: '',
         password: '',
         confirmPassword: '',
         acceptTerms: false,
@@ -52,8 +63,24 @@ export default function SignupPage() {
         if (!validateForm()) return;
 
         setIsSubmitting(true);
-        console.log('Signup submitted:', formData);
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        setErrors({});
+
+        const { error } = await signUp(formData.email, formData.password, {
+            company_name: formData.companyName,
+            contact_name: formData.contactName,
+            phone: formData.phone,
+            address: formData.address,
+            city: formData.city,
+            state: formData.state,
+            zip: formData.zip,
+        });
+
+        if (error) {
+            setErrors({ general: error.message || 'Failed to create account' });
+            setIsSubmitting(false);
+            return;
+        }
+
         setIsSubmitting(false);
         setIsSubmitted(true);
     };
@@ -72,17 +99,30 @@ export default function SignupPage() {
     if (isSubmitted) {
         return (
             <AuthLayout>
-                <div className="bg-white rounded-2xl shadow-2xl p-8 text-center">
-                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 text-green-600 mb-6">
+                <div className="bg-white rounded-2xl shadow-2xl p-8 text-center max-w-md">
+                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 text-blue-600 mb-6">
                         <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                         </svg>
                     </div>
-                    <h2 className="text-2xl font-bold text-secondary mb-2">Request Submitted!</h2>
+                    <h2 className="text-2xl font-bold text-secondary mb-2">Check Your Email</h2>
                     <p className="text-secondary-400 mb-6">
-                        Thank you for registering. Your account request will be verified within 24 hours.
-                        We&apos;ll send you an email once your account is active.
+                        We&apos;ve sent a verification email to <strong>{formData.email}</strong>.
+                        Please click the link in the email to verify your address.
                     </p>
+
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6 text-left">
+                        <p className="text-yellow-800 text-sm">
+                            <strong>What happens next?</strong>
+                            <br />
+                            1. Verify your email by clicking the link
+                            <br />
+                            2. Your account will be reviewed by our team
+                            <br />
+                            3. You&apos;ll receive approval within 24 hours
+                        </p>
+                    </div>
+
                     <Link href="/">
                         <Button variant="primary">Return to Website</Button>
                     </Link>
@@ -103,6 +143,13 @@ export default function SignupPage() {
                     </Link>
                     <p className="text-secondary-400 mt-2">Request a client account</p>
                 </div>
+
+                {/* Error Message */}
+                {errors.general && (
+                    <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                        <p className="text-red-600 text-sm">{errors.general}</p>
+                    </div>
+                )}
 
                 {/* Form */}
                 <form onSubmit={handleSubmit} className="space-y-4">
@@ -141,6 +188,38 @@ export default function SignupPage() {
                             value={formData.phone}
                             onChange={handleChange}
                             placeholder="(404) 555-1234"
+                        />
+                    </div>
+
+                    <Input
+                        label="Address"
+                        name="address"
+                        value={formData.address}
+                        onChange={handleChange}
+                        placeholder="123 Business St"
+                    />
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        <Input
+                            label="City"
+                            name="city"
+                            value={formData.city}
+                            onChange={handleChange}
+                            placeholder="Atlanta"
+                        />
+                        <Input
+                            label="State"
+                            name="state"
+                            value={formData.state}
+                            onChange={handleChange}
+                            placeholder="GA"
+                        />
+                        <Input
+                            label="ZIP"
+                            name="zip"
+                            value={formData.zip}
+                            onChange={handleChange}
+                            placeholder="30318"
                         />
                     </div>
 

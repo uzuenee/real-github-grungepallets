@@ -93,3 +93,13 @@ export const WHOLESALE_PRODUCTS: WholesaleProduct[] = [
         isHeatTreated: false,
     },
 ];
+
+// Helper function to get product by ID
+export function getProductById(id: string): WholesaleProduct | undefined {
+    return WHOLESALE_PRODUCTS.find(product => product.id === id);
+}
+
+// Helper to check if product is custom
+export function isCustomProduct(product: WholesaleProduct): boolean {
+    return product.category === 'custom' || product.id === 'custom-pallet';
+}

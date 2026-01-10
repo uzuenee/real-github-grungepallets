@@ -57,9 +57,21 @@ export function ContactForm() {
 
         setIsSubmitting(true);
 
-        // Simulate API call
-        console.log('Contact Form Submitted:', formData);
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        try {
+            const webhookUrl = process.env.NEXT_PUBLIC_N8N_CONTACT_WEBHOOK;
+            if (webhookUrl) {
+                await fetch(webhookUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        ...formData,
+                        submitted_at: new Date().toISOString(),
+                    }),
+                });
+            }
+        } catch (error) {
+            console.error('Failed to submit contact form:', error);
+        }
 
         setIsSubmitting(false);
         setIsSubmitted(true);
