@@ -1,5 +1,3 @@
-'use client';
-
 import { HTMLAttributes, forwardRef } from 'react';
 
 type CardPadding = 'none' | 'sm' | 'md' | 'lg';

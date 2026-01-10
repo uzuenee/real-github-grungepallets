@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { Link } from 'react-router-dom';
 import { ArrowLeft, Calendar } from 'lucide-react';
 import { Badge } from '@/components/ui';
 import { Article } from '@/components/ui/ArticleCard';
@@ -24,7 +24,7 @@ export function ArticleLayout({
             <div className="bg-secondary py-12">
                 <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
                     <Link
-                        href="/resources"
+                        to="/resources"
                         className="inline-flex items-center text-secondary-300 hover:text-white transition-colors mb-6"
                     >
                         <ArrowLeft size={18} className="mr-2" />
@@ -68,7 +68,7 @@ export function ArticleLayout({
                                         {relatedArticles.map((article) => (
                                             <Link
                                                 key={article.slug}
-                                                href={`/resources/${article.slug}`}
+                                                to={`/resources/${article.slug}`}
                                                 className="block group"
                                             >
                                                 <h4 className="font-medium text-secondary group-hover:text-primary transition-colors line-clamp-2">
@@ -88,7 +88,7 @@ export function ArticleLayout({
                                     Get a free quote for your pallet needs today.
                                 </p>
                                 <Link
-                                    href="/quote"
+                                    to="/quote"
                                     className="inline-block bg-white text-primary font-semibold px-4 py-2 rounded-lg hover:bg-white/90 transition-colors"
                                 >
                                     Request Quote

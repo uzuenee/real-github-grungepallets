@@ -1,5 +1,3 @@
-'use client';
-
 import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 import { X, CheckCircle, AlertCircle, Info } from 'lucide-react';
 
@@ -67,7 +65,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                         key={toast.id}
                         className={`
               flex items-center gap-3 px-4 py-3 rounded-lg border shadow-lg
-              animate-[slideIn_0.3s_ease-out]
+              animate-slide-in
               ${getBgColor(toast.type)}
             `}
                         style={{
@@ -88,19 +86,6 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                     </div>
                 ))}
             </div>
-
-            <style jsx global>{`
-        @keyframes slideIn {
-          from {
-            opacity: 0;
-            transform: translateX(100%);
-          }
-          to {
-            opacity: 1;
-            transform: translateX(0);
-          }
-        }
-      `}</style>
         </ToastContext.Provider>
     );
 }

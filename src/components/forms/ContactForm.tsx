@@ -1,5 +1,3 @@
-'use client';
-
 import { useState } from 'react';
 import { Input, Button } from '@/components/ui';
 
@@ -97,7 +95,7 @@ export function ContactForm() {
                 </div>
                 <h3 className="text-2xl font-bold text-secondary mb-2">Message Sent!</h3>
                 <p className="text-secondary-400">
-                    Thank you for reaching out. We&apos;ll get back to you within 24 hours.
+                    Thank you for reaching out. We'll get back to you within 24 hours.
                 </p>
             </div>
         );

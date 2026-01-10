@@ -1,6 +1,4 @@
-'use client';
-
-import Link from 'next/link';
+import { Link } from 'react-router-dom';
 import { ShoppingCart } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { useCart } from '@/lib/contexts/CartContext';
@@ -64,7 +62,7 @@ export function CartPreview() {
                 </div>
 
                 {/* View Cart Button */}
-                <Link href="/portal/cart">
+                <Link to="/portal/cart">
                     <Button variant="primary" className="w-full">
                         View Cart
                     </Button>

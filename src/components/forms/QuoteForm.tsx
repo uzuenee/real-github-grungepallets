@@ -1,5 +1,3 @@
-'use client';
-
 import { useState } from 'react';
 import { Input, Button } from '@/components/ui';
 import { Package, Recycle } from 'lucide-react';

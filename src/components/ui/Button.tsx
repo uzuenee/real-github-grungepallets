@@ -1,5 +1,3 @@
-'use client';
-
 import { forwardRef, ButtonHTMLAttributes } from 'react';
 
 type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'outline-white';

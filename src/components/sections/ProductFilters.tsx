@@ -1,5 +1,3 @@
-'use client';
-
 interface ProductFiltersProps {
     activeFilter: string;
     onFilterChange: (filter: string) => void;
