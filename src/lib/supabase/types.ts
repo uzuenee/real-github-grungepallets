@@ -14,17 +14,36 @@ export interface Profile {
     created_at?: string;
 }
 
+export interface Category {
+    id: string;
+    label: string;
+    description?: string;
+    color_class: string;
+    sort_order: number;
+    is_active: boolean;
+    created_at?: string;
+}
+
 export interface Product {
     id: string;
     name: string;
-    category: 'grade-a' | 'grade-b' | 'heat-treated' | 'custom';
+    category_id: string;
     size: string;
     dimensions: string;
     price: number;
-    description: string;
     in_stock: boolean;
+    is_heat_treated: boolean;
+    is_protected: boolean;
+    sort_order: number;
     image_url?: string;
+    created_at?: string;
+    updated_at?: string;
+    // Joined data
+    category?: Category;
 }
+
+// Legacy category type for backwards compatibility
+export type ProductCategory = 'grade-a' | 'grade-b' | 'heat-treated' | 'custom';
 
 export interface Order {
     id: string;
@@ -55,10 +74,15 @@ export type Database = {
                 Insert: Omit<Profile, 'created_at'>;
                 Update: Partial<Omit<Profile, 'id'>>;
             };
+            categories: {
+                Row: Category;
+                Insert: Omit<Category, 'created_at'>;
+                Update: Partial<Omit<Category, 'id'>>;
+            };
             products: {
                 Row: Product;
-                Insert: Omit<Product, 'id'>;
-                Update: Partial<Omit<Product, 'id'>>;
+                Insert: Omit<Product, 'created_at' | 'updated_at' | 'category'>;
+                Update: Partial<Omit<Product, 'id' | 'created_at' | 'category'>>;
             };
             orders: {
                 Row: Order;

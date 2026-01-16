@@ -15,8 +15,9 @@ export async function PATCH(
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check if user is admin
-    const { data: adminProfile } = await supabase
+    // Check if user is admin using admin client to bypass RLS
+    const adminClientForCheck = createAdminClient();
+    const { data: adminProfile } = await adminClientForCheck
         .from('profiles')
         .select('is_admin')
         .eq('id', user.id)
@@ -88,8 +89,9 @@ export async function DELETE(
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check if user is admin
-    const { data: adminProfile } = await supabase
+    // Check if user is admin using admin client to bypass RLS
+    const adminClientForCheck = createAdminClient();
+    const { data: adminProfile } = await adminClientForCheck
         .from('profiles')
         .select('is_admin')
         .eq('id', user.id)

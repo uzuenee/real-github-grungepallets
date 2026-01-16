@@ -393,6 +393,13 @@ export default function AdminPage() {
                             </span>
                         )}
                     </button>
+                    <Link
+                        href="/admin/products"
+                        className="flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-colors bg-white text-secondary-500 hover:bg-secondary-100"
+                    >
+                        <Package size={20} />
+                        Products
+                    </Link>
                 </div>
 
                 {/* Orders Tab */}

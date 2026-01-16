@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { PortalLayout } from '@/components/layout';
 import { Card, Button, Badge, ToastProvider, useToast } from '@/components/ui';
-import { RefreshCw, Filter, ChevronDown, Package } from 'lucide-react';
+import { RefreshCw, Filter, ChevronDown, Package, Truck } from 'lucide-react';
 import { CartProvider, useCart } from '@/lib/contexts/CartContext';
 import { Order, OrderStatus } from '@/lib/supabase/types';
 
@@ -168,6 +168,7 @@ function OrdersContent() {
                                     <tr>
                                         <th className="text-left text-sm font-semibold text-secondary px-6 py-4">Order #</th>
                                         <th className="text-left text-sm font-semibold text-secondary px-4 py-4">Date</th>
+                                        <th className="text-left text-sm font-semibold text-secondary px-4 py-4">Delivery Date</th>
                                         <th className="text-center text-sm font-semibold text-secondary px-4 py-4">Items</th>
                                         <th className="text-right text-sm font-semibold text-secondary px-4 py-4">Total</th>
                                         <th className="text-center text-sm font-semibold text-secondary px-4 py-4">Status</th>
@@ -184,6 +185,16 @@ function OrdersContent() {
                                             </td>
                                             <td className="px-4 py-4 text-secondary-500">
                                                 {new Date(order.created_at).toLocaleDateString()}
+                                            </td>
+                                            <td className="px-4 py-4 text-secondary-500">
+                                                {order.delivery_date ? (
+                                                    <span className="flex items-center gap-1.5">
+                                                        <Truck size={14} className="text-primary" />
+                                                        {new Date(order.delivery_date).toLocaleDateString()}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-secondary-300">TBD</span>
+                                                )}
                                             </td>
                                             <td className="px-4 py-4 text-center text-secondary-500">
                                                 {order.order_items?.length || 0}
@@ -218,8 +229,14 @@ function OrdersContent() {
                                                 {order.id.slice(0, 8)}...
                                             </Link>
                                             <p className="text-sm text-secondary-400">
-                                                {new Date(order.created_at).toLocaleDateString()}
+                                                Ordered: {new Date(order.created_at).toLocaleDateString()}
                                             </p>
+                                            {order.delivery_date && (
+                                                <p className="text-sm text-secondary-400 flex items-center gap-1">
+                                                    <Truck size={12} className="text-primary" />
+                                                    Delivery: {new Date(order.delivery_date).toLocaleDateString()}
+                                                </p>
+                                            )}
                                         </div>
                                         <Badge variant={getStatusColor(order.status) as 'success' | 'warning' | 'info'}>
                                             {order.status.charAt(0).toUpperCase() + order.status.slice(1)}

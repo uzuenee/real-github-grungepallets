@@ -12,8 +12,18 @@ import {
     LogOut,
     Menu,
     X,
+    ChevronDown,
+    ChevronUp,
+    Search,
 } from 'lucide-react';
 import { useAuth } from '@/lib/contexts/AuthContext';
+import {
+    useShopFilter,
+    categories as defaultCategories,
+    sortOptions,
+    SortOption,
+} from '@/lib/contexts/ShopFilterContext';
+import { Category } from '@/lib/supabase/types';
 
 interface PortalLayoutProps {
     children: React.ReactNode;
@@ -25,30 +35,52 @@ export function PortalLayout({ children }: PortalLayoutProps) {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
     const [cartCount, setCartCount] = useState(0);
+    const [showFilters, setShowFilters] = useState(true);
+    const [apiCategories, setApiCategories] = useState<Category[]>([]);
 
-    // Sync cart count from localStorage
+    // Check if we're on the shop page
+    const isShopPage = pathname === '/portal/shop';
+
+    // Get filter context - will throw if not wrapped, so we handle it
+    let shopFilter: ReturnType<typeof useShopFilter> | null = null;
+    try {
+        shopFilter = useShopFilter();
+    } catch {
+        // Not wrapped in ShopFilterProvider, which is fine for non-shop pages
+    }
+
+    // Sync cart count and subtotal from localStorage
+    const [cartSubtotal, setCartSubtotal] = useState(0);
+
     useEffect(() => {
-        const updateCartCount = () => {
+        const updateCartData = () => {
             try {
                 const saved = localStorage.getItem('grunge-pallets-cart');
                 if (saved) {
                     const items = JSON.parse(saved);
                     const count = items.reduce((sum: number, item: { quantity: number }) => sum + item.quantity, 0);
+                    const subtotal = items.reduce((sum: number, item: { quantity: number; price: number; isCustom?: boolean }) => {
+                        if (item.isCustom) return sum;
+                        return sum + (item.price * item.quantity);
+                    }, 0);
                     setCartCount(count);
+                    setCartSubtotal(subtotal);
                 } else {
                     setCartCount(0);
+                    setCartSubtotal(0);
                 }
             } catch {
                 setCartCount(0);
+                setCartSubtotal(0);
             }
         };
 
-        updateCartCount();
-        window.addEventListener('storage', updateCartCount);
-        const interval = setInterval(updateCartCount, 1000);
+        updateCartData();
+        window.addEventListener('storage', updateCartData);
+        const interval = setInterval(updateCartData, 1000);
 
         return () => {
-            window.removeEventListener('storage', updateCartCount);
+            window.removeEventListener('storage', updateCartData);
             clearInterval(interval);
         };
     }, []);
@@ -67,6 +99,29 @@ export function PortalLayout({ children }: PortalLayoutProps) {
         window.addEventListener('resize', checkMobile);
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
+
+    // Fetch categories from API for sidebar filters
+    useEffect(() => {
+        const fetchCategories = async () => {
+            try {
+                const res = await fetch('/api/categories');
+                if (res.ok) {
+                    const data = await res.json();
+                    setApiCategories(data.categories || []);
+                }
+            } catch (err) {
+                console.error('Failed to fetch categories:', err);
+            }
+        };
+        if (isShopPage) {
+            fetchCategories();
+        }
+    }, [isShopPage]);
+
+    // Build categories list for filters
+    const categories = apiCategories.length > 0
+        ? [{ id: 'all', label: 'All Products' }, ...apiCategories.map(c => ({ id: c.id, label: c.label }))]
+        : defaultCategories;
 
     // Close sidebar when route changes on mobile
     useEffect(() => {
@@ -129,30 +184,114 @@ export function PortalLayout({ children }: PortalLayoutProps) {
                     ${isMobile ? (isSidebarOpen ? 'translate-x-0' : '-translate-x-full') : 'translate-x-0'}
                 `}
             >
-                <nav className="p-4 space-y-1">
+                <nav className="p-4 space-y-1 overflow-y-auto max-h-[calc(100vh-10rem)]">
                     {navItems.map((item) => {
                         const isActive = pathname === item.href;
+                        const isShopItem = item.href === '/portal/shop';
+
                         return (
-                            <Link
-                                key={item.href}
-                                href={item.href}
-                                className={`
-                                    flex items-center gap-3 px-4 py-3 rounded-lg transition-colors
-                                    ${isActive
-                                        ? 'bg-primary text-white'
-                                        : 'text-secondary-500 hover:bg-secondary-50 hover:text-primary'
-                                    }
-                                `}
-                            >
-                                <item.icon size={20} />
-                                <span className="font-medium">{item.label}</span>
-                                {item.badge !== undefined && item.badge > 0 && (
-                                    <span className={`ml-auto px-2 py-0.5 text-xs font-bold rounded-full ${isActive ? 'bg-white text-primary' : 'bg-primary text-white'
-                                        }`}>
-                                        {item.badge}
-                                    </span>
+                            <div key={item.href}>
+                                <Link
+                                    href={item.href}
+                                    className={`
+                                        flex items-center gap-3 px-4 py-3 rounded-lg transition-colors
+                                        ${isActive
+                                            ? 'bg-primary text-white'
+                                            : 'text-secondary-500 hover:bg-secondary-50 hover:text-primary'
+                                        }
+                                    `}
+                                >
+                                    <item.icon size={20} />
+                                    <span className="font-medium">{item.label}</span>
+                                    {item.badge !== undefined && item.badge > 0 && (
+                                        <span className={`ml-auto px-2 py-0.5 text-xs font-bold rounded-full ${isActive ? 'bg-white text-primary' : 'bg-primary text-white'
+                                            }`}>
+                                            {item.badge}
+                                        </span>
+                                    )}
+                                    {isShopItem && isShopPage && shopFilter && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                setShowFilters(!showFilters);
+                                            }}
+                                            className="ml-auto"
+                                        >
+                                            {showFilters ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                        </button>
+                                    )}
+                                </Link>
+
+                                {/* Shop Filters Dropdown */}
+                                {isShopItem && isShopPage && shopFilter && showFilters && (
+                                    <div className="mt-2 ml-4 p-3 bg-secondary-50 rounded-lg space-y-4">
+                                        {/* Search */}
+                                        <div>
+                                            <label className="text-xs font-medium text-secondary-500 mb-1.5 block">Search</label>
+                                            <div className="relative">
+                                                <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-secondary-300" />
+                                                <input
+                                                    type="text"
+                                                    value={shopFilter.search}
+                                                    onChange={(e) => shopFilter.setSearch(e.target.value)}
+                                                    placeholder="Search..."
+                                                    className="w-full pl-8 pr-3 py-1.5 rounded-md border border-secondary-200 focus:outline-none focus:ring-2 focus:ring-primary text-xs"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Categories */}
+                                        <div>
+                                            <label className="text-xs font-medium text-secondary-500 mb-1.5 block">Category</label>
+                                            <div className="space-y-1">
+                                                {categories.map((cat) => (
+                                                    <button
+                                                        key={cat.id}
+                                                        onClick={() => shopFilter.setCategory(cat.id)}
+                                                        className={`
+                                                            w-full text-left px-2.5 py-1.5 rounded-md text-xs transition-colors
+                                                            ${shopFilter.category === cat.id
+                                                                ? 'bg-primary text-white'
+                                                                : 'text-secondary-600 hover:bg-secondary-100'
+                                                            }
+                                                        `}
+                                                    >
+                                                        {cat.label}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        {/* Heat Treated Toggle */}
+                                        <div>
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={shopFilter.heatTreatedOnly}
+                                                    onChange={(e) => shopFilter.setHeatTreatedOnly(e.target.checked)}
+                                                    className="w-4 h-4 text-primary rounded border-secondary-300 focus:ring-primary"
+                                                />
+                                                <span className="text-xs font-medium text-secondary-600">Heat Treated Only</span>
+                                            </label>
+                                        </div>
+
+                                        {/* Sort */}
+                                        <div>
+                                            <label className="text-xs font-medium text-secondary-500 mb-1.5 block">Sort By</label>
+                                            <select
+                                                value={shopFilter.sort}
+                                                onChange={(e) => shopFilter.setSort(e.target.value as SortOption)}
+                                                className="w-full px-2.5 py-1.5 rounded-md border border-secondary-200 focus:outline-none focus:ring-2 focus:ring-primary text-xs"
+                                            >
+                                                {sortOptions.map((opt) => (
+                                                    <option key={opt.id} value={opt.id}>{opt.label}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
                                 )}
-                            </Link>
+                            </div>
                         );
                     })}
                 </nav>

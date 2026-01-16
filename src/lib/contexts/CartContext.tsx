@@ -5,6 +5,8 @@ export interface CustomSpecs {
     width: string;
     height?: string;
     notes?: string;
+    gradeType?: string;   // 'grade-a' | 'grade-b' | 'heat-treated'
+    gradeLabel?: string;  // 'Grade A' | 'Grade B' | 'Heat Treated'
 }
 
 export interface CartItem {

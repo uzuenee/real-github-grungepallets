@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 
 export async function GET(request: Request) {
@@ -11,8 +11,9 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check if user is admin
-    const { data: profile } = await supabase
+    // Check if user is admin using admin client to bypass RLS
+    const adminClient = createAdminClient();
+    const { data: profile } = await adminClient
         .from('profiles')
         .select('is_admin')
         .eq('id', user.id)

@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 
 // GET single order with full details for admin
@@ -18,8 +18,9 @@ export async function GET(
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check if user is admin
-    const { data: adminProfile } = await supabase
+    // Check if user is admin using admin client to bypass RLS
+    const adminClient = createAdminClient();
+    const { data: adminProfile } = await adminClient
         .from('profiles')
         .select('is_admin')
         .eq('id', user.id)
@@ -89,8 +90,9 @@ export async function DELETE(
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check if user is admin
-    const { data: adminProfile } = await supabase
+    // Check if user is admin using admin client to bypass RLS
+    const adminClient = createAdminClient();
+    const { data: adminProfile } = await adminClient
         .from('profiles')
         .select('is_admin')
         .eq('id', user.id)
