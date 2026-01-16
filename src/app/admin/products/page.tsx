@@ -705,7 +705,10 @@ export default function AdminProductsPage() {
                             <span className="text-sm text-secondary-500">
                                 {profile?.contact_name}
                             </span>
-                            <Button variant="outline" size="sm" onClick={signOut}>
+                            <Button variant="outline" size="sm" onClick={() => {
+                                window.location.href = '/login';
+                                signOut();
+                            }}>
                                 <LogOut size={16} className="mr-2" />
                                 Sign Out
                             </Button>

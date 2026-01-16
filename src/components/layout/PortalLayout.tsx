@@ -129,8 +129,8 @@ export function PortalLayout({ children }: PortalLayoutProps) {
     }, [pathname]);
 
     const handleLogout = async () => {
-        // Redirect immediately to prevent flash of fallback text
-        window.location.href = '/';
+        // Redirect immediately to login page to prevent flash of fallback text
+        window.location.href = '/login';
         // Sign out happens after redirect starts
         signOut();
     };

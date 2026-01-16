@@ -63,9 +63,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setLoading(false);
         });
 
-        // Listen for auth changes
+        // Listen for auth changes (including from other tabs)
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             async (event, session) => {
+                console.log('[AuthContext] Auth state changed:', event);
+
+                // Handle sign out - redirect immediately to login
+                if (event === 'SIGNED_OUT') {
+                    setUser(null);
+                    setProfile(null);
+                    // Redirect to login page immediately
+                    window.location.href = '/login';
+                    return;
+                }
+
                 setUser(session?.user ?? null);
                 if (session?.user) {
                     await fetchProfile();
