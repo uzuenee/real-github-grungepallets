@@ -129,7 +129,10 @@ export function PortalLayout({ children }: PortalLayoutProps) {
     }, [pathname]);
 
     const handleLogout = async () => {
-        await signOut();
+        // Redirect immediately to prevent flash of fallback text
+        window.location.href = '/';
+        // Sign out happens after redirect starts
+        signOut();
     };
 
     return (
