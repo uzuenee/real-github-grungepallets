@@ -180,28 +180,12 @@ export default function PortalDashboardPage() {
                 </Card>
             </div>
 
-            {/* Need Help */}
-            <Card padding="lg" className="bg-secondary text-white">
-                <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
-                    <div className="flex-shrink-0 w-14 h-14 rounded-xl bg-white/10 flex items-center justify-center">
-                        <Phone size={28} />
-                    </div>
-                    <div className="flex-1">
-                        <h3 className="font-bold text-xl mb-1">Need Help?</h3>
-                        <p className="text-secondary-200 mb-4 md:mb-0">
-                            Our team is here to assist you with orders, questions, or special requests.
-                        </p>
-                    </div>
-                    <div className="flex flex-col sm:flex-row gap-3">
-                        <Link href="/contact">
-                            <Button variant="outline-white">Contact Us</Button>
-                        </Link>
-                        <a href="tel:4045557255">
-                            <Button variant="primary">(404) 555-7255</Button>
-                        </a>
-                    </div>
-                </div>
-            </Card>
+            {/* Contact Team - simple footer */}
+            <div className="text-center pb-4">
+                <Link href="/contact">
+                    <Button variant="primary" size="sm">Contact Team</Button>
+                </Link>
+            </div>
         </PortalLayout>
     );
 }

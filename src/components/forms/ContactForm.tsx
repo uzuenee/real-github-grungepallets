@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Input, Button } from '@/components/ui';
+import { formatPhoneNumber } from '@/lib/utils/phoneFormat';
 
 interface FormData {
     name: string;
@@ -58,6 +59,14 @@ export function ContactForm() {
         setIsSubmitting(true);
 
         try {
+            // Send email notification
+            await fetch('/api/email/contact', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData),
+            });
+
+            // Also send to n8n webhook if configured
             const webhookUrl = process.env.NEXT_PUBLIC_N8N_CONTACT_WEBHOOK;
             if (webhookUrl) {
                 await fetch(webhookUrl, {
@@ -81,7 +90,9 @@ export function ContactForm() {
         e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
     ) => {
         const { name, value } = e.target;
-        setFormData((prev) => ({ ...prev, [name]: value }));
+        // Format phone numbers automatically
+        const formattedValue = name === 'phone' ? formatPhoneNumber(value) : value;
+        setFormData((prev) => ({ ...prev, [name]: formattedValue }));
         if (errors[name as keyof FormErrors]) {
             setErrors((prev) => ({ ...prev, [name]: undefined }));
         }

@@ -1,5 +1,6 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { sendUserApprovedEmail } from '@/lib/email';
 
 export async function PATCH(
     request: NextRequest,
@@ -54,6 +55,14 @@ export async function PATCH(
             return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
         }
 
+        // Get user's current approval status before update
+        // Note: email is NOT in profiles table, it's in auth.users
+        const { data: currentProfile } = await adminSupabase
+            .from('profiles')
+            .select('approved, contact_name, company_name')
+            .eq('id', id)
+            .single();
+
         console.log('Updating profile:', id, 'with data:', updateData);
 
         const { data, error } = await adminSupabase
@@ -66,6 +75,23 @@ export async function PATCH(
         if (error) {
             console.error('Profile update error:', error);
             return NextResponse.json({ error: error.message }, { status: 500 });
+        }
+
+        // Send approval email if user was just approved
+        if (approved === true && currentProfile && !currentProfile.approved) {
+            // Get email from auth.users via admin API
+            const { data: authUser } = await adminSupabase.auth.admin.getUserById(id);
+            const userEmail = authUser?.user?.email;
+
+            if (userEmail) {
+                sendUserApprovedEmail({
+                    userEmail: userEmail,
+                    userName: currentProfile.contact_name || 'User',
+                    companyName: currentProfile.company_name || 'Your Company',
+                }).catch(err => console.error('[User Approval] Email error:', err));
+            } else {
+                console.warn('[User Approval] No email found for user:', id);
+            }
         }
 
         return NextResponse.json({ user: data });

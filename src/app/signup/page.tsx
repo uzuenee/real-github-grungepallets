@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { AuthLayout } from '@/components/layout';
 import { Input, Button } from '@/components/ui';
 import { useAuth } from '@/lib/contexts/AuthContext';
+import { formatPhoneNumber } from '@/lib/utils/phoneFormat';
 
 interface FormData {
     companyName: string;
@@ -87,9 +88,10 @@ export default function SignupPage() {
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value, type, checked } = e.target;
+        const formattedValue = name === 'phone' ? formatPhoneNumber(value) : value;
         setFormData((prev) => ({
             ...prev,
-            [name]: type === 'checkbox' ? checked : value,
+            [name]: type === 'checkbox' ? checked : formattedValue,
         }));
         if (errors[name]) {
             setErrors((prev) => ({ ...prev, [name]: undefined }));

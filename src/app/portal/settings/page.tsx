@@ -3,8 +3,16 @@
 import { useState, useEffect } from 'react';
 import { PortalLayout } from '@/components/layout';
 import { Card, Button, Input } from '@/components/ui';
-import { User, Building, MapPin, Bell, Lock } from 'lucide-react';
+import { User, Building, MapPin, Bell, Lock, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/lib/contexts/AuthContext';
+import { formatPhoneNumber } from '@/lib/utils/phoneFormat';
+
+interface NotificationPreferences {
+    order_confirmations: boolean;
+    shipping_updates: boolean;
+    delivery_notifications: boolean;
+    promotional_emails: boolean;
+}
 
 export default function PortalSettingsPage() {
     const { profile, user, refreshProfile } = useAuth();
@@ -26,6 +34,26 @@ export default function PortalSettingsPage() {
         zip: '',
     });
 
+    // Password change state
+    const [passwordData, setPasswordData] = useState({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+    });
+    const [showPasswords, setShowPasswords] = useState({
+        current: false,
+        new: false,
+        confirm: false,
+    });
+
+    // Notification preferences state
+    const [notifications, setNotifications] = useState<NotificationPreferences>({
+        order_confirmations: true,
+        shipping_updates: true,
+        delivery_notifications: true,
+        promotional_emails: false,
+    });
+
     // Initialize form data from profile
     useEffect(() => {
         if (profile) {
@@ -43,17 +71,30 @@ export default function PortalSettingsPage() {
         }
     }, [profile]);
 
+    // Fetch notification preferences
+    useEffect(() => {
+        const fetchNotifications = async () => {
+            try {
+                const response = await fetch('/api/profile/notifications');
+                if (response.ok) {
+                    const data = await response.json();
+                    setNotifications(data.preferences);
+                }
+            } catch (err) {
+                console.error('Failed to fetch notification preferences:', err);
+            }
+        };
+        fetchNotifications();
+    }, []);
+
     const handleSave = async () => {
         setIsSaving(true);
         setError('');
         setSaved(false);
 
         try {
-            const updates = activeTab === 'profile' || activeTab === 'company' || activeTab === 'address'
-                ? { ...profileData, ...companyData }
-                : {};
-
-            if (Object.keys(updates).length > 0) {
+            if (activeTab === 'profile' || activeTab === 'company' || activeTab === 'address') {
+                const updates = { ...profileData, ...companyData };
                 const response = await fetch('/api/profile', {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
@@ -65,8 +106,53 @@ export default function PortalSettingsPage() {
                     throw new Error(data.error || 'Failed to save changes');
                 }
 
-                // Refresh the profile in context
                 await refreshProfile();
+            } else if (activeTab === 'notifications') {
+                const response = await fetch('/api/profile/notifications', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(notifications),
+                });
+
+                if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.error || 'Failed to save notifications');
+                }
+            } else if (activeTab === 'security') {
+                // Validate passwords
+                if (!passwordData.currentPassword) {
+                    throw new Error('Current password is required');
+                }
+                if (!passwordData.newPassword) {
+                    throw new Error('New password is required');
+                }
+                if (passwordData.newPassword.length < 8) {
+                    throw new Error('New password must be at least 8 characters');
+                }
+                if (passwordData.newPassword !== passwordData.confirmPassword) {
+                    throw new Error('Passwords do not match');
+                }
+
+                const response = await fetch('/api/profile/password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        currentPassword: passwordData.currentPassword,
+                        newPassword: passwordData.newPassword,
+                    }),
+                });
+
+                if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.error || 'Failed to change password');
+                }
+
+                // Clear password fields on success
+                setPasswordData({
+                    currentPassword: '',
+                    newPassword: '',
+                    confirmPassword: '',
+                });
             }
 
             setSaved(true);
@@ -104,7 +190,11 @@ export default function PortalSettingsPage() {
                             {tabs.map((tab) => (
                                 <button
                                     key={tab.id}
-                                    onClick={() => setActiveTab(tab.id)}
+                                    onClick={() => {
+                                        setActiveTab(tab.id);
+                                        setError('');
+                                        setSaved(false);
+                                    }}
                                     className={`
                     w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-left
                     ${activeTab === tab.id
@@ -145,7 +235,7 @@ export default function PortalSettingsPage() {
                                         label="Phone"
                                         type="tel"
                                         value={profileData.phone}
-                                        onChange={(e) => setProfileData(prev => ({ ...prev, phone: e.target.value }))}
+                                        onChange={(e) => setProfileData(prev => ({ ...prev, phone: formatPhoneNumber(e.target.value) }))}
                                     />
                                 </div>
                             </div>
@@ -202,15 +292,19 @@ export default function PortalSettingsPage() {
                                 <h2 className="text-xl font-bold text-secondary mb-6">Notification Preferences</h2>
                                 <div className="space-y-4">
                                     {[
-                                        { label: 'Order confirmations', desc: 'Receive email when an order is placed', checked: true },
-                                        { label: 'Shipping updates', desc: 'Get notified when orders ship', checked: true },
-                                        { label: 'Delivery notifications', desc: 'Receive email on delivery', checked: true },
-                                        { label: 'Promotional emails', desc: 'Special offers and discounts', checked: false },
-                                    ].map((pref, idx) => (
-                                        <label key={idx} className="flex items-start gap-4 cursor-pointer">
+                                        { key: 'order_confirmations', label: 'Order confirmations', desc: 'Receive email when an order is placed' },
+                                        { key: 'shipping_updates', label: 'Shipping updates', desc: 'Get notified when orders ship' },
+                                        { key: 'delivery_notifications', label: 'Delivery notifications', desc: 'Receive email on delivery' },
+                                        { key: 'promotional_emails', label: 'Promotional emails', desc: 'Special offers and discounts' },
+                                    ].map((pref) => (
+                                        <label key={pref.key} className="flex items-start gap-4 cursor-pointer">
                                             <input
                                                 type="checkbox"
-                                                defaultChecked={pref.checked}
+                                                checked={notifications[pref.key as keyof NotificationPreferences]}
+                                                onChange={(e) => setNotifications(prev => ({
+                                                    ...prev,
+                                                    [pref.key]: e.target.checked
+                                                }))}
                                                 className="w-5 h-5 rounded border-secondary-300 text-primary focus:ring-primary mt-0.5"
                                             />
                                             <div>
@@ -226,23 +320,59 @@ export default function PortalSettingsPage() {
                         {/* Security Tab */}
                         {activeTab === 'security' && (
                             <div>
-                                <h2 className="text-xl font-bold text-secondary mb-6">Security Settings</h2>
+                                <h2 className="text-xl font-bold text-secondary mb-6">Change Password</h2>
                                 <div className="space-y-4 max-w-md">
-                                    <Input
-                                        label="Current Password"
-                                        type="password"
-                                        placeholder="••••••••"
-                                    />
-                                    <Input
-                                        label="New Password"
-                                        type="password"
-                                        placeholder="••••••••"
-                                    />
-                                    <Input
-                                        label="Confirm New Password"
-                                        type="password"
-                                        placeholder="••••••••"
-                                    />
+                                    <div className="relative">
+                                        <Input
+                                            label="Current Password"
+                                            type={showPasswords.current ? 'text' : 'password'}
+                                            value={passwordData.currentPassword}
+                                            onChange={(e) => setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }))}
+                                            placeholder="••••••••"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPasswords(prev => ({ ...prev, current: !prev.current }))}
+                                            className="absolute right-3 top-9 text-secondary-400 hover:text-secondary-600"
+                                        >
+                                            {showPasswords.current ? <EyeOff size={18} /> : <Eye size={18} />}
+                                        </button>
+                                    </div>
+                                    <div className="relative">
+                                        <Input
+                                            label="New Password"
+                                            type={showPasswords.new ? 'text' : 'password'}
+                                            value={passwordData.newPassword}
+                                            onChange={(e) => setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
+                                            placeholder="••••••••"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPasswords(prev => ({ ...prev, new: !prev.new }))}
+                                            className="absolute right-3 top-9 text-secondary-400 hover:text-secondary-600"
+                                        >
+                                            {showPasswords.new ? <EyeOff size={18} /> : <Eye size={18} />}
+                                        </button>
+                                    </div>
+                                    <div className="relative">
+                                        <Input
+                                            label="Confirm New Password"
+                                            type={showPasswords.confirm ? 'text' : 'password'}
+                                            value={passwordData.confirmPassword}
+                                            onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                                            placeholder="••••••••"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPasswords(prev => ({ ...prev, confirm: !prev.confirm }))}
+                                            className="absolute right-3 top-9 text-secondary-400 hover:text-secondary-600"
+                                        >
+                                            {showPasswords.confirm ? <EyeOff size={18} /> : <Eye size={18} />}
+                                        </button>
+                                    </div>
+                                    <p className="text-sm text-secondary-400">
+                                        Password must be at least 8 characters long.
+                                    </p>
                                 </div>
                             </div>
                         )}

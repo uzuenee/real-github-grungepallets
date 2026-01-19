@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { sendOrderConfirmation, sendAdminNewOrderNotification } from '@/lib/email';
 
 export async function GET() {
     const supabase = await createClient();
@@ -103,9 +104,60 @@ export async function POST(request: NextRequest) {
         }
 
         console.log('[Orders API] Order created successfully:', order.id);
+
+        // Send email notifications (don't block on this)
+        // Note: email is NOT in profiles table, it's in auth.users (available via user.email)
+        const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('contact_name, company_name')
+            .eq('id', user.id)
+            .single();
+
+        console.log('[Orders API] Profile fetch result:', { profile, profileError, userEmail: user.email });
+
+        if (profile) {
+            // Use the email from the auth user, not from profiles
+            const customerEmail = user.email || '';
+            console.log('[Orders API] Sending order confirmation to:', customerEmail);
+
+            // Send order confirmation to customer
+            sendOrderConfirmation({
+                userId: user.id,
+                customerEmail: customerEmail,
+                customerName: profile.contact_name || 'Customer',
+                orderId: order.id,
+                orderTotal: total,
+                items: orderItems.map(item => ({
+                    product_name: item.product_name,
+                    quantity: item.quantity,
+                    unit_price: item.unit_price,
+                })),
+            }).then(result => {
+                console.log('[Orders API] Order confirmation email result:', result);
+            }).catch(err => console.error('[Orders API] Email error:', err));
+
+            // Send admin notification
+            sendAdminNewOrderNotification({
+                orderId: order.id,
+                customerName: profile.contact_name || 'Customer',
+                companyName: profile.company_name || 'Unknown',
+                orderTotal: total,
+                items: orderItems.map(item => ({
+                    product_name: item.product_name,
+                    quantity: item.quantity,
+                    unit_price: item.unit_price,
+                })),
+            }).then(result => {
+                console.log('[Orders API] Admin notification result:', result);
+            }).catch(err => console.error('[Orders API] Admin email error:', err));
+        } else {
+            console.warn('[Orders API] No profile found, skipping email notifications');
+        }
+
         return NextResponse.json({ order, success: true });
     } catch (err) {
         console.error('[Orders API] Unexpected error:', err);
         return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
     }
 }
+

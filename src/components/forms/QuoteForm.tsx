@@ -1,11 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Input, Button } from '@/components/ui';
 import { Package, Recycle } from 'lucide-react';
+import { formatPhoneNumber } from '@/lib/utils/phoneFormat';
 
 type QuoteType = 'buy' | 'sell' | null;
 type Frequency = 'one-time' | 'weekly' | 'monthly';
+
+interface Product {
+    id: string;
+    name: string;
+    size: string;
+}
 
 interface BuyFormData {
     palletType: string;
@@ -34,16 +41,6 @@ interface FormErrors {
     [key: string]: string | undefined;
 }
 
-const palletTypes = [
-    { value: '', label: 'Select pallet type...' },
-    { value: 'gma-48x40-a', label: 'GMA 48x40 Grade A' },
-    { value: 'gma-48x40-b', label: 'GMA 48x40 Grade B' },
-    { value: '48x40-ht', label: '48x40 Heat Treated' },
-    { value: '42x42', label: '42x42 Grade A' },
-    { value: '48x48', label: '48x48 Grade A' },
-    { value: 'custom', label: 'Custom Size' },
-];
-
 const palletConditions = [
     { value: '', label: 'Select condition...' },
     { value: 'grade-a', label: 'Grade A (Excellent condition)' },
@@ -58,6 +55,33 @@ export function QuoteForm() {
     const [isSubmitted, setIsSubmitted] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errors, setErrors] = useState<FormErrors>({});
+    const [products, setProducts] = useState<Product[]>([]);
+
+    // Fetch products from database on mount
+    useEffect(() => {
+        const fetchProducts = async () => {
+            try {
+                const response = await fetch('/api/products');
+                if (response.ok) {
+                    const data = await response.json();
+                    setProducts(data.products || []);
+                }
+            } catch (err) {
+                console.error('Failed to fetch products:', err);
+            }
+        };
+        fetchProducts();
+    }, []);
+
+    // Build pallet types from database products (sorted A-Z, Custom at end)
+    const palletTypes = [
+        { value: '', label: 'Select pallet type...' },
+        ...products
+            .filter(p => !p.name.toLowerCase().includes('custom')) // Exclude custom products
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .map(p => ({ value: p.id, label: p.name })),
+        { value: 'custom', label: 'Custom Size' },
+    ];
 
     const [buyData, setBuyData] = useState<BuyFormData>({
         palletType: '',
@@ -90,6 +114,8 @@ export function QuoteForm() {
         if (!buyData.name) newErrors.name = 'Name is required';
         if (!buyData.email) newErrors.email = 'Email is required';
         else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(buyData.email)) newErrors.email = 'Invalid email';
+        if (!buyData.phone) newErrors.phone = 'Phone is required';
+        else if (buyData.phone.replace(/\D/g, '').length < 10) newErrors.phone = 'Please enter a valid phone number';
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -102,6 +128,8 @@ export function QuoteForm() {
         if (!sellData.name) newErrors.name = 'Name is required';
         if (!sellData.email) newErrors.email = 'Email is required';
         else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(sellData.email)) newErrors.email = 'Invalid email';
+        if (!sellData.phone) newErrors.phone = 'Phone is required';
+        else if (sellData.phone.replace(/\D/g, '').length < 10) newErrors.phone = 'Please enter a valid phone number';
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -113,15 +141,33 @@ export function QuoteForm() {
 
         setIsSubmitting(true);
 
+        // Get display labels instead of internal IDs
+        const palletTypeLabel = palletTypes.find(p => p.value === buyData.palletType)?.label || buyData.palletType;
+        const conditionLabel = palletConditions.find(c => c.value === sellData.palletCondition)?.label || sellData.palletCondition;
+
+        const requestData = {
+            type: quoteType,
+            data: quoteType === 'buy'
+                ? { ...buyData, palletType: palletTypeLabel }
+                : { ...sellData, palletCondition: conditionLabel },
+        };
+
         try {
+            // Send email notification
+            await fetch('/api/email/quote', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestData),
+            });
+
+            // Also send to n8n webhook if configured
             const webhookUrl = process.env.NEXT_PUBLIC_N8N_QUOTE_WEBHOOK;
             if (webhookUrl) {
                 await fetch(webhookUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        type: quoteType,
-                        data: quoteType === 'buy' ? buyData : sellData,
+                        ...requestData,
                         submitted_at: new Date().toISOString(),
                     }),
                 });
@@ -136,13 +182,15 @@ export function QuoteForm() {
 
     const handleBuyChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
-        setBuyData((prev) => ({ ...prev, [name]: value }));
+        const formattedValue = name === 'phone' ? formatPhoneNumber(value) : value;
+        setBuyData((prev) => ({ ...prev, [name]: formattedValue }));
         if (errors[name]) setErrors((prev) => ({ ...prev, [name]: undefined }));
     };
 
     const handleSellChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
-        setSellData((prev) => ({ ...prev, [name]: value }));
+        const formattedValue = name === 'phone' ? formatPhoneNumber(value) : value;
+        setSellData((prev) => ({ ...prev, [name]: formattedValue }));
         if (errors[name]) setErrors((prev) => ({ ...prev, [name]: undefined }));
     };
 
@@ -350,11 +398,12 @@ export function QuoteForm() {
                             placeholder="Your Company Name"
                         />
                         <Input
-                            label="Phone"
+                            label="Phone *"
                             name="phone"
                             type="tel"
                             value={quoteType === 'buy' ? buyData.phone : sellData.phone}
                             onChange={quoteType === 'buy' ? handleBuyChange : handleSellChange}
+                            error={errors.phone}
                             placeholder="(404) 555-1234"
                         />
                     </div>
