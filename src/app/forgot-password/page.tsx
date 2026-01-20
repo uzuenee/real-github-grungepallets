@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { AuthLayout } from '@/components/layout';
 import { Input, Button } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
 
-export default function ForgotPasswordPage() {
+function ForgotPasswordContent() {
     const searchParams = useSearchParams();
     const [email, setEmail] = useState('');
     const [error, setError] = useState('');
@@ -131,5 +131,22 @@ export default function ForgotPasswordPage() {
                 </div>
             </div>
         </AuthLayout>
+    );
+}
+
+export default function ForgotPasswordPage() {
+    return (
+        <Suspense fallback={
+            <AuthLayout>
+                <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
+                    <div className="animate-pulse">
+                        <div className="h-8 bg-gray-200 rounded w-3/4 mx-auto mb-4"></div>
+                        <div className="h-4 bg-gray-200 rounded w-1/2 mx-auto"></div>
+                    </div>
+                </div>
+            </AuthLayout>
+        }>
+            <ForgotPasswordContent />
+        </Suspense>
     );
 }
