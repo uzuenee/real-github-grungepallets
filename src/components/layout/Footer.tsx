@@ -12,9 +12,7 @@ export function Footer() {
                     {/* Column 1: Company Info */}
                     <div className="lg:col-span-1">
                         <Link href="/" className="inline-block mb-4">
-                            <span className="text-2xl font-black tracking-tight">
-                                GRUNGE <span className="text-primary">PALLETS</span>
-                            </span>
+                            <img src="/logo.jpg" alt="Grunge Pallets" className="h-12 w-auto" />
                         </Link>
                         <p className="text-secondary-200 leading-relaxed">
                             {COMPANY_INFO.tagline}

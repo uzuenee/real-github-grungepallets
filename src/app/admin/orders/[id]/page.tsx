@@ -158,8 +158,8 @@ export default function AdminOrderDetailPage() {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center justify-between h-16">
                         <div className="flex items-center gap-4">
-                            <Link href="/" className="text-xl font-black text-secondary">
-                                GRUNGE <span className="text-primary">PALLETS</span>
+                            <Link href="/" className="flex items-center">
+                                <img src="/logo.jpg" alt="Grunge Pallets" className="h-10 w-auto" />
                             </Link>
                             <span className="px-2 py-1 bg-primary/10 text-primary text-xs font-semibold rounded">
                                 ADMIN

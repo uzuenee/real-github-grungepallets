@@ -324,8 +324,8 @@ export default function PickupsPage() {
                                                 type="button"
                                                 onClick={() => setFormData(prev => ({ ...prev, pallet_condition: condition.id }))}
                                                 className={`p-3 rounded-lg border-2 text-left transition-colors ${formData.pallet_condition === condition.id
-                                                        ? 'border-primary bg-primary/5'
-                                                        : 'border-secondary-200 hover:border-secondary-300'
+                                                    ? 'border-primary bg-primary/5'
+                                                    : 'border-secondary-200 hover:border-secondary-300'
                                                     }`}
                                             >
                                                 <p className="font-medium text-secondary text-sm">{condition.label}</p>
@@ -433,14 +433,6 @@ export default function PickupsPage() {
                                         className="w-full px-4 py-2.5 rounded-lg border border-secondary-200 focus:outline-none focus:ring-2 focus:ring-primary resize-none text-sm"
                                         placeholder="Gate codes, dock instructions, etc."
                                     />
-                                </div>
-
-                                {/* Pricing Note */}
-                                <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
-                                    <p className="text-xs text-amber-800">
-                                        <strong>Note:</strong> Pricing is determined after we assess your pallets.
-                                        Typical rates: $1-5 per pallet.
-                                    </p>
                                 </div>
 
                                 {/* Error */}

@@ -118,9 +118,7 @@ export default function ResetPasswordPage() {
                 {/* Logo */}
                 <div className="text-center mb-8">
                     <Link href="/" className="inline-block">
-                        <span className="text-2xl font-black text-secondary">
-                            GRUNGE <span className="text-primary">PALLETS</span>
-                        </span>
+                        <img src="/logo.jpg" alt="Grunge Pallets" className="h-12 w-auto mx-auto" />
                     </Link>
                     <p className="text-secondary-400 mt-2">Create a new password</p>
                 </div>

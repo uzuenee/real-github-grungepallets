@@ -151,9 +151,7 @@ export function PortalLayout({ children }: PortalLayoutProps) {
                             {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
                         </button>
                         <Link href="/portal" className="flex items-center">
-                            <span className="text-xl font-black text-secondary">
-                                GRUNGE <span className="text-primary">PALLETS</span>
-                            </span>
+                            <img src="/logo.jpg" alt="Grunge Pallets" className="h-10 w-auto" />
                         </Link>
                     </div>
 

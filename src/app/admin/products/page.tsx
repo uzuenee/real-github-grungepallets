@@ -694,8 +694,8 @@ export default function AdminProductsPage() {
                             <Link href="/admin" className="text-secondary-400 hover:text-primary transition-colors">
                                 <ArrowLeft size={20} />
                             </Link>
-                            <Link href="/" className="text-xl font-black text-secondary">
-                                GRUNGE <span className="text-primary">PALLETS</span>
+                            <Link href="/" className="flex items-center">
+                                <img src="/logo.jpg" alt="Grunge Pallets" className="h-10 w-auto" />
                             </Link>
                             <span className="px-2 py-1 bg-primary/10 text-primary text-xs font-semibold rounded">
                                 ADMIN

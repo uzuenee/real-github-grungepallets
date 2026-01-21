@@ -55,9 +55,7 @@ export function Header() {
                     <div className="flex items-center justify-between h-20">
                         {/* Logo */}
                         <Link href="/" className="flex items-center">
-                            <span className="text-2xl font-black text-secondary tracking-tight">
-                                GRUNGE <span className="text-primary">PALLETS</span>
-                            </span>
+                            <img src="/logo.jpg" alt="Grunge Pallets" className="h-12 w-auto" />
                         </Link>
 
                         {/* Desktop Navigation */}
@@ -121,9 +119,7 @@ export function Header() {
                 <div className="flex flex-col h-full">
                     {/* Drawer Header */}
                     <div className="flex items-center justify-between p-4 border-b border-secondary-100">
-                        <span className="text-xl font-black text-secondary">
-                            GRUNGE <span className="text-primary">PALLETS</span>
-                        </span>
+                        <img src="/logo.jpg" alt="Grunge Pallets" className="h-10 w-auto" />
                         <button
                             onClick={() => setIsMobileMenuOpen(false)}
                             className="p-2 text-secondary-500 hover:text-primary transition-colors"

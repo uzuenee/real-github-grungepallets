@@ -23,20 +23,10 @@ export async function GET() {
         }
 
         // Fetch all pickups with user profiles
+        // Need to use a different approach since user_id references auth.users, not profiles
         const { data: pickups, error } = await supabase
             .from('pickups')
-            .select(`
-                *,
-                profiles:user_id (
-                    company_name,
-                    contact_name,
-                    phone,
-                    address,
-                    city,
-                    state,
-                    zip
-                )
-            `)
+            .select('*')
             .order('created_at', { ascending: false });
 
         if (error) {
@@ -44,7 +34,20 @@ export async function GET() {
             return NextResponse.json({ error: 'Failed to fetch pickups' }, { status: 500 });
         }
 
-        return NextResponse.json({ pickups });
+        // Fetch profiles for each pickup
+        const userIds = [...new Set(pickups?.map(p => p.user_id) || [])];
+        const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, company_name, contact_name, phone, address, city, state, zip')
+            .in('id', userIds);
+
+        // Merge profiles into pickups
+        const pickupsWithProfiles = pickups?.map(pickup => ({
+            ...pickup,
+            profiles: profiles?.find(p => p.id === pickup.user_id) || null
+        })) || [];
+
+        return NextResponse.json({ pickups: pickupsWithProfiles });
     } catch (error) {
         console.error('Admin pickups API error:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

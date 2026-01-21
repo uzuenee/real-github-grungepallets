@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, Button } from '@/components/ui';
 import { Package, ShoppingCart, TrendingUp, LogOut, RefreshCw, Users, Shield, CheckCircle, XCircle, Trash2, X, Copy, Check, User, MapPin, Calendar, FileText, Truck } from 'lucide-react';
@@ -73,6 +74,7 @@ const pickupStatusOptions = ['pending', 'scheduled', 'completed', 'cancelled'] a
 
 export default function AdminPage() {
     const { signOut, profile, user: authUser, loading: authLoading } = useAuth();
+    const router = useRouter();
     const currentUserId = authUser?.id || profile?.id;
     const [activeTab, setActiveTab] = useState<AdminTab>('orders');
 
@@ -490,8 +492,8 @@ export default function AdminPage() {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center justify-between h-16">
                         <div className="flex items-center gap-4">
-                            <Link href="/" className="text-xl font-black text-secondary">
-                                GRUNGE <span className="text-primary">PALLETS</span>
+                            <Link href="/" className="flex items-center">
+                                <img src="/logo.jpg" alt="Grunge Pallets" className="h-10 w-auto" />
                             </Link>
                             <span className="px-2 py-1 bg-primary/10 text-primary text-xs font-semibold rounded">
                                 ADMIN
@@ -984,7 +986,11 @@ export default function AdminPage() {
                                         </thead>
                                         <tbody className="divide-y divide-secondary-100">
                                             {pickups.map((pickup) => (
-                                                <tr key={pickup.id} className="hover:bg-primary/5 transition-colors">
+                                                <tr
+                                                    key={pickup.id}
+                                                    className="hover:bg-primary/5 transition-colors cursor-pointer"
+                                                    onClick={() => router.push(`/admin/pickups/${pickup.id}`)}
+                                                >
                                                     <td className="px-6 py-4">
                                                         <p className="font-medium text-secondary">
                                                             {new Date(pickup.created_at).toLocaleDateString()}
@@ -1016,7 +1022,7 @@ export default function AdminPage() {
                                                             </span>
                                                         )}
                                                     </td>
-                                                    <td className="px-4 py-4">
+                                                    <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
                                                         <select
                                                             value={pickup.status}
                                                             onChange={(e) => handlePickupStatusChange(pickup.id, e.target.value)}
@@ -1034,7 +1040,7 @@ export default function AdminPage() {
                                                             ))}
                                                         </select>
                                                     </td>
-                                                    <td className="px-4 py-4">
+                                                    <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
                                                         <input
                                                             type="date"
                                                             value={pickup.scheduled_date || ''}
@@ -1051,7 +1057,7 @@ export default function AdminPage() {
                                                             <span className="text-secondary-300">TBD</span>
                                                         )}
                                                     </td>
-                                                    <td className="px-4 py-4 text-center">
+                                                    <td className="px-4 py-4 text-center" onClick={(e) => e.stopPropagation()}>
                                                         <button
                                                             onClick={() => handleDeletePickup(pickup.id)}
                                                             disabled={updatingPickup === pickup.id}

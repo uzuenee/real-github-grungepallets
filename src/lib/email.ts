@@ -114,6 +114,10 @@ async function sendEmail({
 
 // Email wrapper with base template
 function wrapInTemplate(content: string): string {
+    // Use Supabase storage URL for the logo (publicly accessible)
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    const logoUrl = `${supabaseUrl}/storage/v1/object/public/assets/logo.jpg`;
+
     return `
 <!DOCTYPE html>
 <html>
@@ -124,7 +128,7 @@ function wrapInTemplate(content: string): string {
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f5f5f5; }
         .container { max-width: 600px; margin: 0 auto; background: white; }
         .header { background: #1a1a2e; padding: 24px; text-align: center; }
-        .header h1 { color: #f59e0b; margin: 0; font-size: 24px; }
+        .header img { max-height: 48px; width: auto; }
         .content { padding: 32px 24px; }
         .footer { background: #f8f9fa; padding: 24px; text-align: center; font-size: 14px; color: #666; }
         .button { display: inline-block; background: #f59e0b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; }
@@ -143,7 +147,7 @@ function wrapInTemplate(content: string): string {
 <body>
     <div class="container">
         <div class="header">
-            <h1>Grunge Pallets</h1>
+            <img src="${logoUrl}" alt="Grunge Pallets" />
         </div>
         <div class="content">
             ${content}
