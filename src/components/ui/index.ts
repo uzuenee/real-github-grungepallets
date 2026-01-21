@@ -7,4 +7,6 @@ export { ProductCard } from './ProductCard';
 export { ArticleCard } from './ArticleCard';
 export { ToastProvider, useToast } from './Toast';
 export { EmptyState } from './EmptyState';
+export { Breadcrumbs } from './Breadcrumbs';
 export * from './Skeleton';
+

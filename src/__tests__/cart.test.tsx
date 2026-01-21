@@ -261,7 +261,7 @@ describe('CartContext', () => {
     });
 
     describe('Delivery Calculation', () => {
-        it('should return free delivery for orders over $500', () => {
+        it('should return null (TBD) for delivery - admin sets it later', () => {
             const { result } = renderHook(() => useCart(), { wrapper });
 
             act(() => {
@@ -273,10 +273,10 @@ describe('CartContext', () => {
             });
 
             const { delivery } = result.current.getTotal();
-            expect(delivery).toBe(0);
+            expect(delivery).toBeNull(); // Delivery is now TBD - set by admin
         });
 
-        it('should charge delivery for orders under $500', () => {
+        it('should return total as subtotal only (no delivery at checkout)', () => {
             const { result } = renderHook(() => useCart(), { wrapper });
 
             act(() => {
@@ -284,11 +284,12 @@ describe('CartContext', () => {
                     productId: 'product-1',
                     productName: 'Product',
                     price: 100.00,
-                }, 2); // $200 total
+                }, 2); // $200 subtotal
             });
 
-            const { delivery } = result.current.getTotal();
-            expect(delivery).toBeGreaterThan(0);
+            const { subtotal, total } = result.current.getTotal();
+            expect(subtotal).toBe(200);
+            expect(total).toBe(200); // Total at checkout is just subtotal, delivery added by admin later
         });
     });
 });

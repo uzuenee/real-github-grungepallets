@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Card, Button } from '@/components/ui';
-import { Package, ShoppingCart, TrendingUp, LogOut, RefreshCw, Users, Shield, CheckCircle, XCircle, Trash2, X, Copy, Check, User, MapPin, Calendar } from 'lucide-react';
+import { Package, ShoppingCart, TrendingUp, LogOut, RefreshCw, Users, Shield, CheckCircle, XCircle, Trash2, X, Copy, Check, User, MapPin, Calendar, FileText, Truck } from 'lucide-react';
 import { useAuth } from '@/lib/contexts/AuthContext';
+import { CustomSpecs } from '@/lib/contexts/CartContext';
 import { Order, OrderStatus, Profile } from '@/lib/supabase/types';
 
 const statusOptions: OrderStatus[] = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'];
@@ -15,13 +16,6 @@ interface OrderWithProfile extends Order {
         contact_name: string;
     };
     order_items?: OrderItem[];
-}
-
-interface CustomSpecs {
-    length: string;
-    width: string;
-    height?: string;
-    notes?: string;
 }
 
 interface OrderItem {
@@ -50,7 +44,32 @@ interface OrderDetails extends Order {
     order_items: OrderItem[];
 }
 
-type AdminTab = 'orders' | 'users';
+type AdminTab = 'orders' | 'users' | 'pickups';
+
+// Pickup types for admin
+interface PickupWithProfile {
+    id: string;
+    user_id: string;
+    status: 'pending' | 'scheduled' | 'completed' | 'cancelled';
+    pallet_condition: string;
+    estimated_quantity: number;
+    actual_quantity?: number;
+    pickup_address: string;
+    preferred_date?: string;
+    scheduled_date?: string;
+    notes?: string;
+    admin_notes?: string;
+    price_per_pallet?: number;
+    total_payout?: number;
+    created_at: string;
+    profiles?: {
+        company_name: string;
+        contact_name: string;
+        phone: string;
+    };
+}
+
+const pickupStatusOptions = ['pending', 'scheduled', 'completed', 'cancelled'] as const;
 
 export default function AdminPage() {
     const { signOut, profile, user: authUser, loading: authLoading } = useAuth();
@@ -75,10 +94,20 @@ export default function AdminPage() {
     const [editingPrice, setEditingPrice] = useState<string>('');
     const [savingPrice, setSavingPrice] = useState(false);
 
+    // Delivery price editing state
+    const [editingDeliveryPrice, setEditingDeliveryPrice] = useState(false);
+    const [deliveryPriceInput, setDeliveryPriceInput] = useState<string>('');
+    const [savingDeliveryPrice, setSavingDeliveryPrice] = useState(false);
+
     // Users state
     const [users, setUsers] = useState<Profile[]>([]);
     const [usersLoading, setUsersLoading] = useState(true);
     const [updatingUser, setUpdatingUser] = useState<string | null>(null);
+
+    // Pickups state
+    const [pickups, setPickups] = useState<PickupWithProfile[]>([]);
+    const [pickupsLoading, setPickupsLoading] = useState(true);
+    const [updatingPickup, setUpdatingPickup] = useState<string | null>(null);
 
     // Fetch orders
     const fetchOrders = async () => {
@@ -127,7 +156,79 @@ export default function AdminPage() {
         if (activeTab === 'users') {
             fetchUsers();
         }
+        if (activeTab === 'pickups') {
+            fetchPickups();
+        }
     }, [activeTab]);
+
+    // Fetch pickups
+    const fetchPickups = async () => {
+        setPickupsLoading(true);
+        try {
+            const response = await fetch('/api/admin/pickups');
+            const result = await response.json();
+            if (response.ok && result.pickups) {
+                setPickups(result.pickups);
+            }
+        } catch (err) {
+            console.error('Fetch pickups error:', err);
+        } finally {
+            setPickupsLoading(false);
+        }
+    };
+
+    // Handle pickup status change
+    const handlePickupStatusChange = async (pickupId: string, newStatus: string) => {
+        setUpdatingPickup(pickupId);
+        try {
+            const response = await fetch(`/api/pickups/${pickupId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: newStatus }),
+            });
+            if (response.ok) {
+                setPickups(prev => prev.map(p =>
+                    p.id === pickupId ? { ...p, status: newStatus as PickupWithProfile['status'] } : p
+                ));
+            }
+        } catch (err) {
+            console.error('Update pickup error:', err);
+        } finally {
+            setUpdatingPickup(null);
+        }
+    };
+
+    // Handle pickup scheduled date change
+    const handlePickupDateChange = async (pickupId: string, date: string) => {
+        try {
+            await fetch(`/api/pickups/${pickupId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ scheduled_date: date, status: 'scheduled' }),
+            });
+            setPickups(prev => prev.map(p =>
+                p.id === pickupId ? { ...p, scheduled_date: date, status: 'scheduled' } : p
+            ));
+        } catch (err) {
+            console.error('Update pickup date error:', err);
+        }
+    };
+
+    // Handle pickup delete
+    const handleDeletePickup = async (pickupId: string) => {
+        if (!confirm('Are you sure you want to delete this pickup request?')) return;
+        setUpdatingPickup(pickupId);
+        try {
+            const response = await fetch(`/api/pickups/${pickupId}`, { method: 'DELETE' });
+            if (response.ok) {
+                setPickups(prev => prev.filter(p => p.id !== pickupId));
+            }
+        } catch (err) {
+            console.error('Delete pickup error:', err);
+        } finally {
+            setUpdatingPickup(null);
+        }
+    };
 
     const handleStatusChange = async (orderId: string, newStatus: OrderStatus) => {
         setUpdatingOrder(orderId);
@@ -284,6 +385,50 @@ export default function AdminPage() {
         }
     };
 
+    // Save delivery price
+    const handleSaveDeliveryPrice = async () => {
+        if (!selectedOrder) return;
+
+        const price = parseFloat(deliveryPriceInput);
+        if (isNaN(price) || price < 0) {
+            alert('Please enter a valid delivery price');
+            return;
+        }
+
+        setSavingDeliveryPrice(true);
+        try {
+            const response = await fetch(`/api/orders/${selectedOrder.id}/status`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ delivery_price: price }),
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                // Update selected order with new delivery price and total
+                setSelectedOrder({
+                    ...selectedOrder,
+                    delivery_price: price,
+                    total: result.order?.total || selectedOrder.total,
+                });
+                // Update in orders list
+                setOrders(prev => prev.map(o =>
+                    o.id === selectedOrder.id ? { ...o, delivery_price: price, total: result.order?.total || o.total } : o
+                ));
+                setEditingDeliveryPrice(false);
+                setDeliveryPriceInput('');
+            } else {
+                const error = await response.json();
+                alert(error.error || 'Failed to update delivery price');
+            }
+        } catch (err) {
+            console.error('Save delivery price error:', err);
+            alert('Failed to save delivery price');
+        } finally {
+            setSavingDeliveryPrice(false);
+        }
+    };
+
     // Calculate stats
     const pendingCount = orders.filter(o => o.status === 'pending').length;
     const processingCount = orders.filter(o => ['confirmed', 'processing', 'shipped'].includes(o.status)).length;
@@ -395,6 +540,16 @@ export default function AdminPage() {
                                 {pendingApprovalCount}
                             </span>
                         )}
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('pickups')}
+                        className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-colors ${activeTab === 'pickups'
+                            ? 'bg-primary text-white'
+                            : 'bg-white text-secondary-500 hover:bg-secondary-100'
+                            }`}
+                    >
+                        <Truck size={20} />
+                        Pickups
                     </button>
                     <Link
                         href="/admin/products"
@@ -744,6 +899,177 @@ export default function AdminPage() {
                         </Card>
                     </>
                 )}
+
+                {/* Pickups Tab */}
+                {activeTab === 'pickups' && (
+                    <>
+                        <h1 className="text-2xl font-bold text-secondary mb-8">Pickup Management</h1>
+
+                        {/* Stats */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                            <Card padding="md">
+                                <div className="flex items-center gap-4">
+                                    <div className="p-3 bg-primary/10 rounded-lg">
+                                        <Truck size={24} className="text-primary" />
+                                    </div>
+                                    <div>
+                                        <p className="text-2xl font-bold text-secondary">{pickups.length}</p>
+                                        <p className="text-sm text-secondary-400">Total Pickups</p>
+                                    </div>
+                                </div>
+                            </Card>
+                            <Card padding="md">
+                                <div className="flex items-center gap-4">
+                                    <div className="p-3 bg-yellow-100 rounded-lg">
+                                        <Package size={24} className="text-yellow-600" />
+                                    </div>
+                                    <div>
+                                        <p className="text-2xl font-bold text-secondary">{pickups.filter(p => p.status === 'pending').length}</p>
+                                        <p className="text-sm text-secondary-400">Pending</p>
+                                    </div>
+                                </div>
+                            </Card>
+                            <Card padding="md">
+                                <div className="flex items-center gap-4">
+                                    <div className="p-3 bg-blue-100 rounded-lg">
+                                        <Calendar size={24} className="text-blue-600" />
+                                    </div>
+                                    <div>
+                                        <p className="text-2xl font-bold text-secondary">{pickups.filter(p => p.status === 'scheduled').length}</p>
+                                        <p className="text-sm text-secondary-400">Scheduled</p>
+                                    </div>
+                                </div>
+                            </Card>
+                            <Card padding="md">
+                                <div className="flex items-center gap-4">
+                                    <div className="p-3 bg-green-100 rounded-lg">
+                                        <TrendingUp size={24} className="text-green-600" />
+                                    </div>
+                                    <div>
+                                        <p className="text-2xl font-bold text-secondary">
+                                            ${pickups.filter(p => p.total_payout).reduce((sum, p) => sum + (p.total_payout || 0), 0).toFixed(2)}
+                                        </p>
+                                        <p className="text-sm text-secondary-400">Total Paid Out</p>
+                                    </div>
+                                </div>
+                            </Card>
+                        </div>
+
+                        {/* Pickups Table */}
+                        <Card padding="none" className="overflow-hidden">
+                            {pickupsLoading ? (
+                                <div className="text-center py-16">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                                    <p className="text-secondary-400 mt-4">Loading pickups...</p>
+                                </div>
+                            ) : pickups.length === 0 ? (
+                                <div className="text-center py-16">
+                                    <Truck size={48} className="text-secondary-200 mx-auto mb-4" />
+                                    <p className="text-secondary-400">No pickup requests yet</p>
+                                </div>
+                            ) : (
+                                <div className="overflow-x-auto">
+                                    <table className="w-full">
+                                        <thead className="bg-secondary-50">
+                                            <tr>
+                                                <th className="text-left text-sm font-semibold text-secondary px-6 py-4">Date</th>
+                                                <th className="text-left text-sm font-semibold text-secondary px-4 py-4">Company</th>
+                                                <th className="text-left text-sm font-semibold text-secondary px-4 py-4">Condition</th>
+                                                <th className="text-right text-sm font-semibold text-secondary px-4 py-4">Quantity</th>
+                                                <th className="text-center text-sm font-semibold text-secondary px-4 py-4">Status</th>
+                                                <th className="text-center text-sm font-semibold text-secondary px-4 py-4">Scheduled</th>
+                                                <th className="text-right text-sm font-semibold text-secondary px-4 py-4">Payout</th>
+                                                <th className="text-center text-sm font-semibold text-secondary px-4 py-4">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-secondary-100">
+                                            {pickups.map((pickup) => (
+                                                <tr key={pickup.id} className="hover:bg-primary/5 transition-colors">
+                                                    <td className="px-6 py-4">
+                                                        <p className="font-medium text-secondary">
+                                                            {new Date(pickup.created_at).toLocaleDateString()}
+                                                        </p>
+                                                        <p className="text-xs text-secondary-400">
+                                                            {pickup.preferred_date && `Preferred: ${new Date(pickup.preferred_date).toLocaleDateString()}`}
+                                                        </p>
+                                                    </td>
+                                                    <td className="px-4 py-4">
+                                                        <p className="font-medium text-secondary">{pickup.profiles?.company_name}</p>
+                                                        <p className="text-sm text-secondary-400">{pickup.profiles?.contact_name}</p>
+                                                    </td>
+                                                    <td className="px-4 py-4">
+                                                        <span className={`inline-block px-2 py-1 text-xs font-medium rounded ${pickup.pallet_condition === 'grade-a' ? 'bg-green-100 text-green-700' :
+                                                            pickup.pallet_condition === 'grade-b' ? 'bg-blue-100 text-blue-700' :
+                                                                pickup.pallet_condition === 'mixed' ? 'bg-yellow-100 text-yellow-700' :
+                                                                    'bg-red-100 text-red-700'
+                                                            }`}>
+                                                            {pickup.pallet_condition.replace('-', ' ').toUpperCase()}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-4 py-4 text-right">
+                                                        <span className="font-semibold text-secondary">
+                                                            {pickup.actual_quantity || pickup.estimated_quantity}
+                                                        </span>
+                                                        {pickup.actual_quantity && pickup.actual_quantity !== pickup.estimated_quantity && (
+                                                            <span className="text-xs text-secondary-400 ml-1">
+                                                                (est. {pickup.estimated_quantity})
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-4 py-4">
+                                                        <select
+                                                            value={pickup.status}
+                                                            onChange={(e) => handlePickupStatusChange(pickup.id, e.target.value)}
+                                                            disabled={updatingPickup === pickup.id}
+                                                            className={`block w-full px-3 py-1.5 text-sm font-medium border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer ${pickup.status === 'pending' ? 'bg-yellow-50 border-yellow-200 text-yellow-700' :
+                                                                pickup.status === 'scheduled' ? 'bg-blue-50 border-blue-200 text-blue-700' :
+                                                                    pickup.status === 'completed' ? 'bg-green-50 border-green-200 text-green-700' :
+                                                                        'bg-red-50 border-red-200 text-red-700'
+                                                                } ${updatingPickup === pickup.id ? 'opacity-50' : ''}`}
+                                                        >
+                                                            {pickupStatusOptions.map((status) => (
+                                                                <option key={status} value={status}>
+                                                                    {status.charAt(0).toUpperCase() + status.slice(1)}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    </td>
+                                                    <td className="px-4 py-4">
+                                                        <input
+                                                            type="date"
+                                                            value={pickup.scheduled_date || ''}
+                                                            onChange={(e) => handlePickupDateChange(pickup.id, e.target.value)}
+                                                            className="block w-full px-3 py-1.5 text-sm border border-secondary-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white"
+                                                        />
+                                                    </td>
+                                                    <td className="px-4 py-4 text-right">
+                                                        {pickup.total_payout ? (
+                                                            <span className="font-semibold text-green-600">${pickup.total_payout.toFixed(2)}</span>
+                                                        ) : pickup.price_per_pallet ? (
+                                                            <span className="text-secondary-400">${pickup.price_per_pallet}/ea</span>
+                                                        ) : (
+                                                            <span className="text-secondary-300">TBD</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-4 py-4 text-center">
+                                                        <button
+                                                            onClick={() => handleDeletePickup(pickup.id)}
+                                                            disabled={updatingPickup === pickup.id}
+                                                            className="p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors disabled:opacity-50"
+                                                            title="Delete pickup"
+                                                        >
+                                                            <Trash2 size={18} />
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </Card>
+                    </>
+                )}
             </main>
 
             {/* Order Details Slide Panel */}
@@ -813,7 +1139,7 @@ export default function AdminPage() {
                                     </div>
                                     <div className="border border-secondary-200 rounded-lg overflow-hidden">
                                         {selectedOrder.order_items.map((item, index) => {
-                                            const isCustomItem = item.is_custom || item.product_id.includes('custom-pallet');
+                                            const isCustomItem = item.is_custom || item.product_id.includes('custom-pallet') || item.product_name.toLowerCase().startsWith('custom');
                                             let customSpecs: CustomSpecs | null = null;
                                             if (item.custom_specs) {
                                                 try {
@@ -837,11 +1163,16 @@ export default function AdminPage() {
                                                                 )}
                                                             </div>
                                                             {customSpecs && (
-                                                                <div className="mt-1 text-xs text-amber-700 bg-amber-100 rounded px-2 py-1 inline-block">
-                                                                    <span className="font-medium">Dimensions:</span> {customSpecs.length}&quot; × {customSpecs.width}&quot;
-                                                                    {customSpecs.height && ` × ${customSpecs.height}"`}
+                                                                <div className="mt-1 text-xs text-amber-700 bg-amber-100 rounded px-2 py-1 space-y-1">
+                                                                    {customSpecs.gradeLabel && (
+                                                                        <p><span className="font-medium">Grade:</span> {customSpecs.gradeLabel}</p>
+                                                                    )}
+                                                                    <p>
+                                                                        <span className="font-medium">Dimensions:</span> {customSpecs.length}" × {customSpecs.width}"
+                                                                        {customSpecs.height && ` × ${customSpecs.height}"`}
+                                                                    </p>
                                                                     {customSpecs.notes && (
-                                                                        <p className="mt-1"><span className="font-medium">Notes:</span> {customSpecs.notes}</p>
+                                                                        <p><span className="font-medium">Notes:</span> {customSpecs.notes}</p>
                                                                     )}
                                                                 </div>
                                                             )}
@@ -916,17 +1247,91 @@ export default function AdminPage() {
                                                 </div>
                                             );
                                         })}
-                                        <div className="p-4 bg-secondary-50 border-t border-secondary-200 flex justify-between">
-                                            <span className="font-semibold text-secondary">Total</span>
-                                            <div className="text-right">
-                                                {selectedOrder.order_items.some(item => item.is_custom && item.unit_price === 0) && (
-                                                    <p className="text-xs text-amber-600 mb-1">* Excludes custom items needing pricing</p>
+                                        <div className="p-4 bg-secondary-50 border-t border-secondary-200">
+                                            {selectedOrder.order_items.some(item => item.is_custom && item.unit_price === 0) && (
+                                                <p className="text-xs text-amber-600 mb-2">* Excludes custom items needing pricing</p>
+                                            )}
+                                            <div className="flex justify-between text-sm text-secondary-500 mb-1">
+                                                <span>Subtotal</span>
+                                                <span>${selectedOrder.order_items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0).toFixed(2)}</span>
+                                            </div>
+                                            <div className="flex justify-between text-sm text-secondary-500 mb-2">
+                                                <span>Delivery</span>
+                                                {editingDeliveryPrice ? (
+                                                    <div className="flex items-center gap-2">
+                                                        <span>$</span>
+                                                        <input
+                                                            type="number"
+                                                            min="0"
+                                                            step="0.01"
+                                                            value={deliveryPriceInput}
+                                                            onChange={(e) => setDeliveryPriceInput(e.target.value)}
+                                                            placeholder="0.00"
+                                                            className="w-20 px-2 py-1 text-sm border border-primary rounded focus:outline-none focus:ring-2 focus:ring-primary"
+                                                            disabled={savingDeliveryPrice}
+                                                        />
+                                                        <button
+                                                            onClick={handleSaveDeliveryPrice}
+                                                            disabled={savingDeliveryPrice}
+                                                            className="px-2 py-1 bg-primary text-white text-xs rounded hover:bg-primary-600 disabled:opacity-50"
+                                                        >
+                                                            {savingDeliveryPrice ? '...' : 'Save'}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => { setEditingDeliveryPrice(false); setDeliveryPriceInput(''); }}
+                                                            className="px-2 py-1 bg-secondary-200 text-secondary-600 text-xs rounded hover:bg-secondary-300"
+                                                        >
+                                                            ×
+                                                        </button>
+                                                    </div>
+                                                ) : selectedOrder.delivery_price != null ? (
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-green-600 font-medium">${selectedOrder.delivery_price.toFixed(2)}</span>
+                                                        <button
+                                                            onClick={() => {
+                                                                setEditingDeliveryPrice(true);
+                                                                setDeliveryPriceInput(selectedOrder.delivery_price?.toString() || '');
+                                                            }}
+                                                            className="text-xs text-primary hover:underline"
+                                                        >
+                                                            Edit
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-amber-600">TBD</span>
+                                                        <button
+                                                            onClick={() => {
+                                                                setEditingDeliveryPrice(true);
+                                                                setDeliveryPriceInput('');
+                                                            }}
+                                                            className="px-2 py-1 bg-primary text-white text-xs font-medium rounded hover:bg-primary-600"
+                                                        >
+                                                            Set Price
+                                                        </button>
+                                                    </div>
                                                 )}
+                                            </div>
+                                            <div className="flex justify-between border-t border-secondary-200 pt-2">
+                                                <span className="font-semibold text-secondary">Total</span>
                                                 <span className="font-bold text-primary text-lg">${selectedOrder.total.toFixed(2)}</span>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
+
+                                {/* Delivery Notes */}
+                                {selectedOrder.delivery_notes && (
+                                    <div>
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <FileText size={18} className="text-secondary-400" />
+                                            <h3 className="font-semibold text-secondary">Delivery Notes</h3>
+                                        </div>
+                                        <div className="border border-secondary-200 rounded-lg p-4">
+                                            <p className="text-secondary-600 whitespace-pre-wrap">{selectedOrder.delivery_notes}</p>
+                                        </div>
+                                    </div>
+                                )}
 
                                 {/* Customer Info */}
                                 <div>

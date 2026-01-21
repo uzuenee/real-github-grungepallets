@@ -198,13 +198,15 @@ function OrderDetailContent() {
                             </div>
                             <div className="flex justify-between text-secondary-500">
                                 <span>Delivery</span>
-                                <span className="font-medium text-secondary">
-                                    {subtotal >= 500 ? 'FREE' : '$75.00'}
+                                <span className={`font-medium ${order.delivery_price != null ? 'text-green-600' : 'text-amber-600'}`}>
+                                    {order.delivery_price != null ? `$${order.delivery_price.toFixed(2)}` : 'TBD'}
                                 </span>
                             </div>
-                            <p className="text-xs text-secondary-400 italic">
-                                Taxes included in invoice
-                            </p>
+                            {order.delivery_price == null && (
+                                <p className="text-xs text-amber-600 italic">
+                                    Delivery price will be set after order review
+                                </p>
+                            )}
                         </div>
                         <div className="border-t border-secondary-100 pt-4 mt-4">
                             <div className="flex justify-between">
@@ -226,7 +228,7 @@ function OrderDetailContent() {
                     </Card>
 
                     {/* Delivery Status */}
-                    {order.delivery_date && (
+                    {order.status === 'delivered' && order.delivery_date && (
                         <Card padding="lg" className="bg-green-50 border-green-200">
                             <p className="text-green-700 font-medium">
                                 ✓ Delivered on {new Date(order.delivery_date).toLocaleDateString('en-US', {

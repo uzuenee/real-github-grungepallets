@@ -64,20 +64,10 @@ export function Footer() {
                                 {COMPANY_INFO.city}, {COMPANY_INFO.state} {COMPANY_INFO.zip}
                             </p>
                             <p>
-                                <a
-                                    href={`tel:${COMPANY_INFO.phone.replace(/[^\d]/g, '')}`}
-                                    className="hover:text-primary transition-colors duration-200"
-                                >
-                                    {COMPANY_INFO.phone}
-                                </a>
+                                <span>{COMPANY_INFO.phone}</span>
                             </p>
                             <p>
-                                <a
-                                    href={`mailto:${COMPANY_INFO.email}`}
-                                    className="hover:text-primary transition-colors duration-200"
-                                >
-                                    {COMPANY_INFO.email}
-                                </a>
+                                <span>{COMPANY_INFO.email}</span>
                             </p>
                         </address>
                     </div>

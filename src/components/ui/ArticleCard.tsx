@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { FileText } from 'lucide-react';
+import { Clock, ArrowRight, BookOpen, Leaf, Lightbulb } from 'lucide-react';
 import { Badge } from '@/components/ui';
 
 export interface Article {
@@ -8,51 +8,105 @@ export interface Article {
     excerpt: string;
     category: string;
     date: string;
+    readingTime?: number;
+    author?: string;
     image?: string;
 }
 
 interface ArticleCardProps {
     article: Article;
+    featured?: boolean;
 }
 
-export function ArticleCard({ article }: ArticleCardProps) {
+// Category colors and icons
+const categoryConfig: Record<string, { bg: string; icon: React.ReactNode }> = {
+    Education: { bg: 'from-blue-500 to-blue-600', icon: <BookOpen size={32} className="text-white/80" /> },
+    Sustainability: { bg: 'from-green-500 to-green-600', icon: <Leaf size={32} className="text-white/80" /> },
+    Guide: { bg: 'from-amber-500 to-amber-600', icon: <Lightbulb size={32} className="text-white/80" /> },
+};
+
+export function ArticleCard({ article, featured = false }: ArticleCardProps) {
+    const config = categoryConfig[article.category] || categoryConfig.Education;
+
+    if (featured) {
+        return (
+            <article className="relative bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow group">
+                <Link href={`/resources/${article.slug}`} className="block">
+                    {/* Featured Image Area */}
+                    <div className={`h-64 bg-gradient-to-br ${config.bg} flex items-center justify-center relative`}>
+                        {config.icon}
+                        <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors" />
+                    </div>
+
+                    {/* Content */}
+                    <div className="p-8">
+                        <div className="flex items-center gap-3 mb-4">
+                            <Badge variant="info">{article.category}</Badge>
+                            <span className="text-secondary-300 text-sm">{article.date}</span>
+                            {article.readingTime && (
+                                <span className="flex items-center text-secondary-300 text-sm">
+                                    <Clock size={14} className="mr-1" />
+                                    {article.readingTime} min read
+                                </span>
+                            )}
+                        </div>
+
+                        <h3 className="text-2xl font-bold text-secondary mb-3 group-hover:text-primary transition-colors">
+                            {article.title}
+                        </h3>
+
+                        <p className="text-secondary-400 leading-relaxed mb-4">
+                            {article.excerpt}
+                        </p>
+
+                        <span className="inline-flex items-center text-primary font-semibold group-hover:gap-2 transition-all">
+                            Read Article
+                            <ArrowRight size={18} className="ml-2" />
+                        </span>
+                    </div>
+                </Link>
+            </article>
+        );
+    }
+
     return (
         <article className="bg-white rounded-xl border border-secondary-100 overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-xl group">
-            {/* Image Placeholder */}
-            <div className="aspect-video bg-secondary-50 flex items-center justify-center">
-                <FileText size={48} className="text-secondary-200" strokeWidth={1} />
-            </div>
-
-            {/* Content */}
-            <div className="p-6">
-                <div className="flex items-center gap-3 mb-3">
-                    <Badge variant="info">{article.category}</Badge>
-                    <span className="text-secondary-300 text-sm">{article.date}</span>
+            <Link href={`/resources/${article.slug}`} className="block">
+                {/* Image Placeholder with gradient */}
+                <div className={`aspect-video bg-gradient-to-br ${config.bg} flex items-center justify-center relative`}>
+                    {config.icon}
+                    <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors" />
                 </div>
 
-                <h3 className="text-xl font-bold text-secondary mb-2 group-hover:text-primary transition-colors line-clamp-2">
-                    {article.title}
-                </h3>
+                {/* Content */}
+                <div className="p-6">
+                    <div className="flex items-center gap-3 mb-3">
+                        <Badge variant="info">{article.category}</Badge>
+                        {article.readingTime && (
+                            <span className="flex items-center text-secondary-300 text-sm">
+                                <Clock size={14} className="mr-1" />
+                                {article.readingTime} min
+                            </span>
+                        )}
+                    </div>
 
-                <p className="text-secondary-400 text-sm leading-relaxed mb-4 line-clamp-2">
-                    {article.excerpt}
-                </p>
+                    <h3 className="text-xl font-bold text-secondary mb-2 group-hover:text-primary transition-colors line-clamp-2">
+                        {article.title}
+                    </h3>
 
-                <Link
-                    href={`/resources/${article.slug}`}
-                    className="inline-flex items-center text-primary font-semibold hover:text-primary-600 transition-colors group/link"
-                >
-                    Read More
-                    <svg
-                        className="w-4 h-4 ml-2 transform group-hover/link:translate-x-1 transition-transform"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                    >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                </Link>
-            </div>
+                    <p className="text-secondary-400 text-sm leading-relaxed mb-4 line-clamp-2">
+                        {article.excerpt}
+                    </p>
+
+                    <div className="flex items-center justify-between">
+                        <span className="text-secondary-300 text-sm">{article.date}</span>
+                        <span className="inline-flex items-center text-primary font-semibold text-sm">
+                            Read More
+                            <ArrowRight size={16} className="ml-1 group-hover:translate-x-1 transition-transform" />
+                        </span>
+                    </div>
+                </div>
+            </Link>
         </article>
     );
 }

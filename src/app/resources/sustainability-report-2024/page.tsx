@@ -1,20 +1,42 @@
+import { Metadata } from 'next';
 import { MainLayout, ArticleLayout } from '@/components/layout';
 import { ARTICLES } from '@/lib/articles';
+import { ArticleJsonLd } from '@/components/seo/JsonLd';
 
-export const metadata = {
+export const metadata: Metadata = {
     title: '2024 Sustainability Report | Grunge Pallets & Recycling',
     description: 'Explore our 2024 environmental impact report. See how Grunge Pallets is leading sustainable pallet solutions in Metro Atlanta.',
+    openGraph: {
+        title: '2024 Sustainability Report | Grunge Pallets',
+        description: '89,000+ pallets recycled, 12,450 trees saved, 234 tons CO2 prevented. See our environmental impact.',
+        type: 'article',
+        publishedTime: '2024-12-10',
+        authors: ['Grunge Pallets Team'],
+    },
+    twitter: {
+        card: 'summary_large_image',
+        title: '2024 Sustainability Report',
+        description: 'Our commitment to sustainable pallet solutions delivers measurable results.',
+    },
 };
 
 export default function SustainabilityReport2024Page() {
+    const article = ARTICLES.find(a => a.slug === 'sustainability-report-2024')!;
     const relatedArticles = ARTICLES.filter(a => a.slug !== 'sustainability-report-2024').slice(0, 3);
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://grungepallets.com';
 
     return (
         <MainLayout>
+            <ArticleJsonLd
+                article={article}
+                url={`${siteUrl}/resources/sustainability-report-2024`}
+            />
             <ArticleLayout
                 title="2024 Sustainability Report: Our Environmental Impact"
                 date="December 10, 2024"
                 category="Sustainability"
+                readingTime={8}
+                author="Grunge Pallets Team"
                 relatedArticles={relatedArticles}
             >
                 <p className="text-xl text-secondary-400 mb-8">

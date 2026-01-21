@@ -1,10 +1,20 @@
+import { Metadata } from 'next';
 import { MainLayout } from '@/components/layout';
 import { PageHero } from '@/components/sections';
 import { QuoteForm } from '@/components/forms';
 
-export const metadata = {
-    title: 'Get a Quote | Grunge Pallets & Recycling Services',
+export const metadata: Metadata = {
+    title: 'Get a Quote',
     description: 'Request a custom quote for pallet supply or schedule a free pickup for pallet recycling. Same-week delivery across Metro Atlanta.',
+    openGraph: {
+        title: 'Get a Quote | Grunge Pallets',
+        description: 'Request a custom quote for pallet supply or free pickup for recycling.',
+    },
+    twitter: {
+        card: 'summary',
+        title: 'Get a Pallet Quote',
+        description: 'Custom quotes for pallet supply. Same-week delivery in Metro Atlanta.',
+    },
 };
 
 export default function QuotePage() {

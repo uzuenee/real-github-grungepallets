@@ -70,14 +70,16 @@ describe('Order Management', () => {
             return items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
         };
 
-        const calculateDelivery = (subtotal: number): number => {
-            return subtotal >= 500 ? 0 : 50;
+        // Note: Delivery is now set by admin, not calculated
+        // These tests document the old behavior for reference
+        const calculateDelivery = (): number | null => {
+            return null; // TBD - set by admin
         };
 
-        const calculateTotal = (items: OrderItem[]): { subtotal: number; delivery: number; total: number } => {
+        const calculateTotal = (items: OrderItem[]): { subtotal: number; delivery: number | null; total: number } => {
             const subtotal = calculateSubtotal(items);
-            const delivery = calculateDelivery(subtotal);
-            return { subtotal, delivery, total: subtotal + delivery };
+            const delivery = calculateDelivery();
+            return { subtotal, delivery, total: subtotal }; // Total at checkout is just subtotal
         };
 
         it('should calculate subtotal correctly', () => {
@@ -94,8 +96,8 @@ describe('Order Management', () => {
             ];
             const result = calculateTotal(items);
             expect(result.subtotal).toBe(100);
-            expect(result.delivery).toBe(50);
-            expect(result.total).toBe(150);
+            expect(result.delivery).toBeNull(); // Now TBD - set by admin
+            expect(result.total).toBe(100); // Total at checkout is just subtotal
         });
 
         it('should waive delivery fee for orders $500+', () => {
@@ -104,8 +106,8 @@ describe('Order Management', () => {
             ];
             const result = calculateTotal(items);
             expect(result.subtotal).toBe(500);
-            expect(result.delivery).toBe(0);
-            expect(result.total).toBe(500);
+            expect(result.delivery).toBeNull(); // Now TBD - set by admin
+            expect(result.total).toBe(500); // Total at checkout is just subtotal
         });
 
         it('should handle custom items with TBD (zero) pricing', () => {

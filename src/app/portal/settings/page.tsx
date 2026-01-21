@@ -291,28 +291,24 @@ export default function PortalSettingsPage() {
                             <div>
                                 <h2 className="text-xl font-bold text-secondary mb-6">Notification Preferences</h2>
                                 <div className="space-y-4">
-                                    {[
-                                        { key: 'order_confirmations', label: 'Order confirmations', desc: 'Receive email when an order is placed' },
-                                        { key: 'shipping_updates', label: 'Shipping updates', desc: 'Get notified when orders ship' },
-                                        { key: 'delivery_notifications', label: 'Delivery notifications', desc: 'Receive email on delivery' },
-                                        { key: 'promotional_emails', label: 'Promotional emails', desc: 'Special offers and discounts' },
-                                    ].map((pref) => (
-                                        <label key={pref.key} className="flex items-start gap-4 cursor-pointer">
-                                            <input
-                                                type="checkbox"
-                                                checked={notifications[pref.key as keyof NotificationPreferences]}
-                                                onChange={(e) => setNotifications(prev => ({
-                                                    ...prev,
-                                                    [pref.key]: e.target.checked
-                                                }))}
-                                                className="w-5 h-5 rounded border-secondary-300 text-primary focus:ring-primary mt-0.5"
-                                            />
-                                            <div>
-                                                <p className="font-medium text-secondary">{pref.label}</p>
-                                                <p className="text-sm text-secondary-400">{pref.desc}</p>
-                                            </div>
-                                        </label>
-                                    ))}
+                                    <p className="text-sm text-secondary-400 mb-4">
+                                        You will always receive essential notifications about your orders, shipping, and deliveries.
+                                    </p>
+                                    <label className="flex items-start gap-4 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={notifications.promotional_emails}
+                                            onChange={(e) => setNotifications(prev => ({
+                                                ...prev,
+                                                promotional_emails: e.target.checked
+                                            }))}
+                                            className="w-5 h-5 rounded border-secondary-300 text-primary focus:ring-primary mt-0.5"
+                                        />
+                                        <div>
+                                            <p className="font-medium text-secondary">Promotional emails</p>
+                                            <p className="text-sm text-secondary-400">Special offers and discounts</p>
+                                        </div>
+                                    </label>
                                 </div>
                             </div>
                         )}

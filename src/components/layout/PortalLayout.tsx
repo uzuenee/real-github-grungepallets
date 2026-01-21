@@ -15,6 +15,7 @@ import {
     ChevronDown,
     ChevronUp,
     Search,
+    Truck,
 } from 'lucide-react';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import {
@@ -87,6 +88,7 @@ export function PortalLayout({ children }: PortalLayoutProps) {
 
     const navItems = [
         { icon: LayoutDashboard, label: 'Dashboard', href: '/portal' },
+        { icon: Truck, label: 'Pickups', href: '/portal/pickups' },
         { icon: Grid3X3, label: 'Shop Catalog', href: '/portal/shop' },
         { icon: ClipboardList, label: 'Order History', href: '/portal/orders' },
         { icon: ShoppingCart, label: 'Cart', href: '/portal/cart', badge: cartCount },

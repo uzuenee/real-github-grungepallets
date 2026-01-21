@@ -15,21 +15,21 @@ export const SERVICES: Service[] = [
         icon: 'Package',
         title: 'Pallet Supply',
         description: 'Quality new and recycled pallets in all standard sizes. Grade A and B options available with same-week delivery.',
-        href: '/services/supply',
+        href: '/services',
     },
     {
         id: 'pallet-removal',
         icon: 'Trash2',
         title: 'Pallet Removal',
         description: 'Free pickup of unwanted pallets. We handle the logistics so you can focus on your business.',
-        href: '/services/removal',
+        href: '/services',
     },
     {
         id: 'logistics',
         icon: 'Truck',
         title: 'Logistics',
         description: 'Flexible delivery and pickup schedules tailored to your operations. Reliable fleet serving Metro Atlanta.',
-        href: '/services/logistics',
+        href: '/services',
     },
 ];
 

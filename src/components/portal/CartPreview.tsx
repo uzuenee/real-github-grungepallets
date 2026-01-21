@@ -13,7 +13,7 @@ export function CartPreview() {
     if (itemCount === 0) return null;
 
     return (
-        <div className="fixed bottom-20 lg:bottom-6 left-4 z-50">
+        <div className="fixed bottom-20 lg:bottom-16 left-4 z-50">
             {/* Collapsed: Small floating button */}
             {!isExpanded && (
                 <button

@@ -39,6 +39,7 @@ export async function POST(request: NextRequest) {
                 'Quantity': data.quantity || '',
                 'Frequency': data.frequency || '',
                 'Delivery Location': data.deliveryLocation || '',
+                'Need By Date': data.needByDate || 'Not specified',
                 'Notes': data.notes || '',
             };
         } else if (type === 'sell') {
@@ -58,6 +59,7 @@ export async function POST(request: NextRequest) {
             company: data.company,
             phone: data.phone,
             details,
+            photos: body.photos || [],
         });
 
         if (!result.success) {

@@ -1,17 +1,21 @@
+interface Category {
+    id: string;
+    label: string;
+}
+
 interface ProductFiltersProps {
     activeFilter: string;
     onFilterChange: (filter: string) => void;
+    categories?: Category[];
 }
 
-const filters = [
-    { id: 'all', label: 'All Products' },
-    { id: 'grade-a', label: 'Grade A' },
-    { id: 'grade-b', label: 'Grade B' },
-    { id: 'heat-treated', label: 'Heat Treated' },
-    { id: 'custom', label: 'Custom' },
-];
+export function ProductFilters({ activeFilter, onFilterChange, categories = [] }: ProductFiltersProps) {
+    // Build filters from categories, with "All Products" first
+    const filters = [
+        { id: 'all', label: 'All Products' },
+        ...categories.map(c => ({ id: c.id, label: c.label })),
+    ];
 
-export function ProductFilters({ activeFilter, onFilterChange }: ProductFiltersProps) {
     return (
         <section className="py-8 bg-white border-b border-secondary-100">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

@@ -1,12 +1,22 @@
+import { Metadata } from 'next';
 import { MainLayout } from '@/components/layout';
 import { PageHero } from '@/components/sections';
 import { ContactForm } from '@/components/forms';
 import { MapPin, Phone, Mail, Clock } from 'lucide-react';
 import { COMPANY_INFO } from '@/lib/constants';
 
-export const metadata = {
-    title: 'Contact Us | Grunge Pallets & Recycling Services',
+export const metadata: Metadata = {
+    title: 'Contact Us',
     description: 'Get in touch with Grunge Pallets. Contact us for pallet supply, recycling, and logistics services in Metro Atlanta.',
+    openGraph: {
+        title: 'Contact Us | Grunge Pallets',
+        description: 'Get in touch for pallet supply, recycling, and logistics in Metro Atlanta.',
+    },
+    twitter: {
+        card: 'summary',
+        title: 'Contact Grunge Pallets',
+        description: 'Reach out for pallet solutions in Metro Atlanta.',
+    },
 };
 
 const contactInfo = [

@@ -1,20 +1,42 @@
+import { Metadata } from 'next';
 import { MainLayout, ArticleLayout } from '@/components/layout';
 import { ARTICLES } from '@/lib/articles';
+import { ArticleJsonLd } from '@/components/seo/JsonLd';
 
-export const metadata = {
+export const metadata: Metadata = {
     title: 'Business Benefits of Pallet Recycling | Grunge Pallets',
     description: 'Discover how pallet recycling programs can reduce costs, boost sustainability credentials, and streamline your operations.',
+    openGraph: {
+        title: 'The Business Benefits of Pallet Recycling Programs',
+        description: 'Save money, boost sustainability, and streamline operations with a pallet recycling partner.',
+        type: 'article',
+        publishedTime: '2024-11-28',
+        authors: ['Grunge Pallets Team'],
+    },
+    twitter: {
+        card: 'summary_large_image',
+        title: 'Business Benefits of Pallet Recycling',
+        description: 'How recycling programs save money and boost your sustainability credentials.',
+    },
 };
 
 export default function RecyclingBenefitsPage() {
+    const article = ARTICLES.find(a => a.slug === 'recycling-benefits')!;
     const relatedArticles = ARTICLES.filter(a => a.slug !== 'recycling-benefits').slice(0, 3);
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://grungepallets.com';
 
     return (
         <MainLayout>
+            <ArticleJsonLd
+                article={article}
+                url={`${siteUrl}/resources/recycling-benefits`}
+            />
             <ArticleLayout
                 title="The Business Benefits of Pallet Recycling Programs"
                 date="November 28, 2024"
                 category="Sustainability"
+                readingTime={4}
+                author="Grunge Pallets Team"
                 relatedArticles={relatedArticles}
             >
                 <p className="text-xl text-secondary-400 mb-8">

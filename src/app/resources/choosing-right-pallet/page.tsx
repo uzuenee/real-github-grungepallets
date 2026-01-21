@@ -1,20 +1,42 @@
+import { Metadata } from 'next';
 import { MainLayout, ArticleLayout } from '@/components/layout';
 import { ARTICLES } from '@/lib/articles';
+import { ArticleJsonLd } from '@/components/seo/JsonLd';
 
-export const metadata = {
+export const metadata: Metadata = {
     title: 'How to Choose the Right Pallet | Grunge Pallets Guide',
     description: 'Expert guide on selecting the perfect pallet for your products. Learn about load capacity, wood types, entry points, and more.',
+    openGraph: {
+        title: 'How to Choose the Right Pallet for Your Products',
+        description: 'From load capacity to wood type, learn the key factors for selecting pallets for your shipping needs.',
+        type: 'article',
+        publishedTime: '2024-12-05',
+        authors: ['Grunge Pallets Team'],
+    },
+    twitter: {
+        card: 'summary_large_image',
+        title: 'How to Choose the Right Pallet',
+        description: 'Expert guide to selecting the perfect pallet for your business needs.',
+    },
 };
 
 export default function ChoosingRightPalletPage() {
+    const article = ARTICLES.find(a => a.slug === 'choosing-right-pallet')!;
     const relatedArticles = ARTICLES.filter(a => a.slug !== 'choosing-right-pallet').slice(0, 3);
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://grungepallets.com';
 
     return (
         <MainLayout>
+            <ArticleJsonLd
+                article={article}
+                url={`${siteUrl}/resources/choosing-right-pallet`}
+            />
             <ArticleLayout
                 title="How to Choose the Right Pallet for Your Products"
                 date="December 5, 2024"
                 category="Guide"
+                readingTime={6}
+                author="Grunge Pallets Team"
                 relatedArticles={relatedArticles}
             >
                 <p className="text-xl text-secondary-400 mb-8">

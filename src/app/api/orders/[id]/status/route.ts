@@ -29,11 +29,28 @@ export async function PATCH(
 
     try {
         const body = await request.json();
-        const { status, delivery_date } = body;
+        const { status, delivery_date, delivery_price } = body;
 
-        const updateData: { status?: string; delivery_date?: string } = {};
+        const updateData: { status?: string; delivery_date?: string; delivery_price?: number; total?: number } = {};
         if (status) updateData.status = status;
         if (delivery_date) updateData.delivery_date = delivery_date;
+        if (delivery_price !== undefined) {
+            updateData.delivery_price = delivery_price;
+            // We need to recalculate total when delivery_price is set
+            // First fetch current order to get subtotal
+            const { data: currentOrder } = await adminClient
+                .from('orders')
+                .select('total, delivery_price, order_items(quantity, unit_price)')
+                .eq('id', params.id)
+                .single();
+
+            if (currentOrder) {
+                // Calculate subtotal from items
+                const items = currentOrder.order_items as Array<{ quantity: number; unit_price: number }> || [];
+                const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
+                updateData.total = subtotal + delivery_price;
+            }
+        }
 
         // Use admin client for update to bypass RLS
         // Note: email is NOT in profiles table, it's in auth.users

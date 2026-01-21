@@ -1,8 +1,19 @@
 import { ProductCard } from '@/components/ui/ProductCard';
-import { Product } from '@/lib/types';
+
+// Database product type
+interface DbProduct {
+    id: string;
+    name: string;
+    category_id: string;
+    size: string;
+    dimensions: string;
+    is_heat_treated: boolean;
+    image_url?: string;
+    category_label?: string;
+}
 
 interface ProductGridProps {
-    products: Product[];
+    products: DbProduct[];
     filter: string;
 }
 
@@ -10,8 +21,8 @@ export function ProductGrid({ products, filter }: ProductGridProps) {
     const filteredProducts = filter === 'all'
         ? products
         : filter === 'heat-treated'
-            ? products.filter(p => p.isHeatTreated)
-            : products.filter(p => p.category === filter);
+            ? products.filter(p => p.is_heat_treated)
+            : products.filter(p => p.category_id === filter);
 
     return (
         <section className="py-16 bg-light">

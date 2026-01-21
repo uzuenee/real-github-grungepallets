@@ -104,7 +104,7 @@ export function ProductsPreview() {
 
                 {/* View All Link */}
                 <div className="text-center mt-12">
-                    <Link href="/quote">
+                    <Link href="/products">
                         <Button variant="secondary" size="lg">
                             View All Products
                         </Button>

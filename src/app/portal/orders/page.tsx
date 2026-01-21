@@ -177,11 +177,11 @@ function OrdersContent() {
                                 </thead>
                                 <tbody className="divide-y divide-secondary-100">
                                     {displayedOrders.map((order) => (
-                                        <tr key={order.id} className="hover:bg-secondary-50/50 transition-colors">
+                                        <tr key={order.id} className="hover:bg-secondary-50/50 transition-colors cursor-pointer" onClick={() => router.push(`/portal/orders/${order.id}`)}>
                                             <td className="px-6 py-4">
-                                                <Link href={`/portal/orders/${order.id}`} className="font-semibold text-primary hover:text-primary-600">
+                                                <span className="font-semibold text-primary">
                                                     {order.id.slice(0, 8)}...
-                                                </Link>
+                                                </span>
                                             </td>
                                             <td className="px-4 py-4 text-secondary-500">
                                                 {new Date(order.created_at).toLocaleDateString()}
@@ -222,12 +222,12 @@ function OrdersContent() {
                         {/* Mobile Cards */}
                         <div className="md:hidden divide-y divide-secondary-100">
                             {displayedOrders.map((order) => (
-                                <div key={order.id} className="p-4">
+                                <div key={order.id} className="p-4 cursor-pointer hover:bg-secondary-50" onClick={() => router.push(`/portal/orders/${order.id}`)}>
                                     <div className="flex items-start justify-between mb-3">
                                         <div>
-                                            <Link href={`/portal/orders/${order.id}`} className="font-semibold text-primary hover:text-primary-600">
+                                            <span className="font-semibold text-primary">
                                                 {order.id.slice(0, 8)}...
-                                            </Link>
+                                            </span>
                                             <p className="text-sm text-secondary-400">
                                                 Ordered: {new Date(order.created_at).toLocaleDateString()}
                                             </p>

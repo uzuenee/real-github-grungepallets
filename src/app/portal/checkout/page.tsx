@@ -47,6 +47,7 @@ function CheckoutContent() {
         try {
             const response = await fetch('/api/orders', {
                 method: 'POST',
+                credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     items: items.map(item => ({
@@ -203,20 +204,21 @@ function CheckoutContent() {
                             </div>
                             <div className="flex justify-between text-secondary-500">
                                 <span>Delivery</span>
-                                <span className={`font-medium ${delivery === 0 ? 'text-green-600' : 'text-secondary'}`}>
-                                    {delivery === 0 ? 'FREE' : `$${delivery.toFixed(2)}`}
-                                </span>
+                                <span className="font-medium text-amber-600">TBD</span>
                             </div>
                             <p className="text-xs text-secondary-400 italic">
-                                Taxes calculated at invoice
+                                Delivery price confirmed after order review
                             </p>
                         </div>
 
                         <div className="border-t border-secondary-100 pt-4 mb-6">
                             <div className="flex justify-between">
-                                <span className="text-lg font-bold text-secondary">Total</span>
-                                <span className="text-lg font-bold text-primary">${total.toFixed(2)}</span>
+                                <span className="text-lg font-bold text-secondary">Estimated Total</span>
+                                <span className="text-lg font-bold text-primary">${total.toFixed(2)}+</span>
                             </div>
+                            <p className="text-xs text-secondary-400 mt-1">
+                                Final total includes delivery (set after order review)
+                            </p>
                         </div>
 
                         <Button variant="primary" size="lg" className="w-full" onClick={handleSubmitOrder} disabled={isSubmitting}>

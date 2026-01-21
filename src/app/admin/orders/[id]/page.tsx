@@ -307,8 +307,8 @@ export default function AdminOrderDetailPage() {
                                 </div>
                                 <div className="flex justify-between text-secondary-500">
                                     <span>Delivery</span>
-                                    <span className="font-medium text-secondary">
-                                        {subtotal >= 500 ? 'FREE' : '$75.00'}
+                                    <span className={`font-medium ${order.delivery_price != null ? 'text-green-600' : 'text-amber-600'}`}>
+                                        {order.delivery_price != null ? `$${order.delivery_price.toFixed(2)}` : 'TBD'}
                                     </span>
                                 </div>
                             </div>

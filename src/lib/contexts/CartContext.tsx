@@ -26,7 +26,7 @@ interface CartContextType {
     updateQuantity: (productId: string, quantity: number) => void;
     removeItem: (productId: string) => void;
     clearCart: () => void;
-    getTotal: () => { subtotal: number; delivery: number; total: number };
+    getTotal: () => { subtotal: number; delivery: number | null; total: number };
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -102,11 +102,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
     const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
     const getTotal = () => {
-        const delivery = subtotal >= 500 ? 0 : 75;
+        // Delivery price is set by admin after order submission
+        const delivery = null;
         return {
             subtotal,
             delivery,
-            total: subtotal + delivery,
+            total: subtotal, // Total at checkout is just subtotal; delivery added by admin later
         };
     };
 

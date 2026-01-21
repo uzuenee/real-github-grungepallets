@@ -1,0 +1,128 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
+import { sendPickupConfirmationEmail, sendAdminPickupNotification } from '@/lib/email';
+
+// GET - List pickups (users see their own, admins see all via /api/admin/pickups)
+export async function GET() {
+    try {
+        const supabase = await createClient();
+
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        if (authError || !user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const { data: pickups, error } = await supabase
+            .from('pickups')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error('Error fetching pickups:', error);
+            return NextResponse.json({ error: 'Failed to fetch pickups' }, { status: 500 });
+        }
+
+        return NextResponse.json({ pickups });
+    } catch (error) {
+        console.error('Pickups API error:', error);
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    }
+}
+
+// POST - Create new pickup request
+export async function POST(request: NextRequest) {
+    try {
+        const supabase = await createClient();
+
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        if (authError || !user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const body = await request.json();
+        const {
+            pallet_condition,
+            estimated_quantity,
+            pickup_address,
+            pickup_city,
+            pickup_state,
+            pickup_zip,
+            preferred_date,
+            notes,
+        } = body;
+
+        // Validate required fields
+        if (!pallet_condition || !estimated_quantity || !pickup_address) {
+            return NextResponse.json(
+                { error: 'Missing required fields: pallet_condition, estimated_quantity, pickup_address' },
+                { status: 400 }
+            );
+        }
+
+        // Get user profile for email content
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('company_name, contact_name, phone')
+            .eq('id', user.id)
+            .single();
+
+        // Create pickup
+        const { data: pickup, error } = await supabase
+            .from('pickups')
+            .insert({
+                user_id: user.id,
+                pallet_condition,
+                estimated_quantity: parseInt(estimated_quantity),
+                pickup_address,
+                pickup_city,
+                pickup_state,
+                pickup_zip,
+                preferred_date: preferred_date || null,
+                notes: notes || null,
+                status: 'pending',
+            })
+            .select()
+            .single();
+
+        if (error) {
+            console.error('Error creating pickup:', error);
+            return NextResponse.json({ error: 'Failed to create pickup' }, { status: 500 });
+        }
+
+        // Build full address string
+        const fullAddress = [pickup_address, pickup_city, pickup_state, pickup_zip]
+            .filter(Boolean)
+            .join(', ');
+
+        // Send confirmation email to user
+        sendPickupConfirmationEmail({
+            customerEmail: user.email || '',
+            customerName: profile?.contact_name || 'Customer',
+            pickupId: pickup.id,
+            palletCondition: pallet_condition,
+            estimatedQuantity: parseInt(estimated_quantity),
+            pickupAddress: fullAddress,
+            preferredDate: preferred_date,
+        }).catch(err => console.error('[Pickup] Customer email failed:', err));
+
+        // Send notification email to admin
+        sendAdminPickupNotification({
+            customerName: profile?.contact_name || 'Customer',
+            customerEmail: user.email || '',
+            customerPhone: profile?.phone,
+            companyName: profile?.company_name,
+            pickupId: pickup.id,
+            palletCondition: pallet_condition,
+            estimatedQuantity: parseInt(estimated_quantity),
+            pickupAddress: fullAddress,
+            preferredDate: preferred_date,
+            notes,
+        }).catch(err => console.error('[Pickup] Admin email failed:', err));
+
+        return NextResponse.json({ pickup }, { status: 201 });
+    } catch (error) {
+        console.error('Create pickup error:', error);
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    }
+}

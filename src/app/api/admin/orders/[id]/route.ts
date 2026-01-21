@@ -42,7 +42,9 @@ export async function GET(
                 product_id,
                 product_name,
                 quantity,
-                unit_price
+                unit_price,
+                is_custom,
+                custom_specs
             )
         `)
         .eq('id', orderId)

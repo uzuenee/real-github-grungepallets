@@ -1,3 +1,4 @@
+import { Metadata } from 'next';
 import { MainLayout } from '@/components/layout';
 import {
     PageHero,
@@ -7,9 +8,18 @@ import {
     CtaBanner,
 } from '@/components/sections';
 
-export const metadata = {
-    title: 'Our Services | Grunge Pallets & Recycling Services',
+export const metadata: Metadata = {
+    title: 'Our Services',
     description: 'Pallet supply, removal, recycling, and logistics services for Metro Atlanta businesses. Same-week delivery, free pickup, and flexible drop trailer options.',
+    openGraph: {
+        title: 'Our Services | Grunge Pallets',
+        description: 'Complete pallet solutions: supply, removal, recycling, and logistics for Metro Atlanta.',
+    },
+    twitter: {
+        card: 'summary',
+        title: 'Pallet Services | Grunge Pallets',
+        description: 'Same-week delivery, free pickup, and flexible logistics options.',
+    },
 };
 
 export default function ServicesPage() {

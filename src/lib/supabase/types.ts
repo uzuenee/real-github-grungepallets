@@ -1,4 +1,6 @@
 export type OrderStatus = 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+export type PickupStatus = 'pending' | 'scheduled' | 'completed' | 'cancelled';
+export type PalletCondition = 'grade-a' | 'grade-b' | 'mixed' | 'damaged';
 
 export interface Profile {
     id: string;
@@ -50,6 +52,7 @@ export interface Order {
     user_id: string;
     status: OrderStatus;
     total: number;
+    delivery_price?: number | null;
     delivery_notes?: string;
     delivery_date?: string;
     created_at: string;
@@ -63,6 +66,27 @@ export interface OrderItem {
     product_name: string;
     quantity: number;
     unit_price: number;
+}
+
+export interface Pickup {
+    id: string;
+    user_id: string;
+    status: PickupStatus;
+    pallet_condition: PalletCondition;
+    estimated_quantity: number;
+    actual_quantity?: number;
+    pickup_address: string;
+    pickup_city?: string;
+    pickup_state?: string;
+    pickup_zip?: string;
+    preferred_date?: string;
+    scheduled_date?: string;
+    notes?: string;
+    admin_notes?: string;
+    price_per_pallet?: number;
+    total_payout?: number;
+    created_at: string;
+    updated_at?: string;
 }
 
 // Database table types for Supabase
@@ -94,6 +118,12 @@ export type Database = {
                 Insert: Omit<OrderItem, 'id'>;
                 Update: Partial<Omit<OrderItem, 'id' | 'order_id'>>;
             };
+            pickups: {
+                Row: Pickup;
+                Insert: Omit<Pickup, 'id' | 'created_at' | 'updated_at'>;
+                Update: Partial<Omit<Pickup, 'id' | 'user_id' | 'created_at'>>;
+            };
         };
     };
 };
+

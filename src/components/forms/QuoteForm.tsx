@@ -1,9 +1,36 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Input, Button } from '@/components/ui';
-import { Package, Recycle } from 'lucide-react';
+import { Package, Recycle, Upload, X, ImageIcon } from 'lucide-react';
 import { formatPhoneNumber } from '@/lib/utils/phoneFormat';
+
+// Constants for photo upload
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB limit
+const MAX_PHOTOS = 3;
+
+interface ProcessedImage {
+    name: string;
+    base64: string;
+    size: number;
+}
+
+// Read image file and convert to base64 (no compression)
+async function processImage(file: File): Promise<ProcessedImage> {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const base64 = e.target?.result as string;
+            resolve({
+                name: file.name,
+                base64,
+                size: file.size,
+            });
+        };
+        reader.onerror = () => reject(new Error('Failed to read file'));
+        reader.readAsDataURL(file); // This was missing!
+    });
+}
 
 type QuoteType = 'buy' | 'sell' | null;
 type Frequency = 'one-time' | 'weekly' | 'monthly';
@@ -19,6 +46,7 @@ interface BuyFormData {
     quantity: string;
     frequency: Frequency;
     deliveryLocation: string;
+    needByDate: string;
     name: string;
     email: string;
     company: string;
@@ -56,6 +84,10 @@ export function QuoteForm() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errors, setErrors] = useState<FormErrors>({});
     const [products, setProducts] = useState<Product[]>([]);
+    const [photos, setPhotos] = useState<ProcessedImage[]>([]);
+    const [photoError, setPhotoError] = useState<string | null>(null);
+    const [isProcessing, setIsProcessing] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Fetch products from database on mount
     useEffect(() => {
@@ -88,6 +120,7 @@ export function QuoteForm() {
         quantity: '',
         frequency: 'one-time',
         deliveryLocation: '',
+        needByDate: '',
         name: '',
         email: '',
         company: '',
@@ -110,6 +143,8 @@ export function QuoteForm() {
         const newErrors: FormErrors = {};
         if (!buyData.palletType) newErrors.palletType = 'Please select a pallet type';
         if (!buyData.quantity) newErrors.quantity = 'Quantity is required';
+        else if (parseInt(buyData.quantity) > 100000) newErrors.quantity = 'Maximum quantity is 100,000';
+        else if (parseInt(buyData.quantity) < 1) newErrors.quantity = 'Quantity must be at least 1';
         if (!buyData.deliveryLocation) newErrors.deliveryLocation = 'Delivery location is required';
         if (!buyData.name) newErrors.name = 'Name is required';
         if (!buyData.email) newErrors.email = 'Email is required';
@@ -124,6 +159,8 @@ export function QuoteForm() {
         const newErrors: FormErrors = {};
         if (!sellData.palletCondition) newErrors.palletCondition = 'Please select condition';
         if (!sellData.estimatedQuantity) newErrors.estimatedQuantity = 'Quantity is required';
+        else if (parseInt(sellData.estimatedQuantity) > 100000) newErrors.estimatedQuantity = 'Maximum quantity is 100,000';
+        else if (parseInt(sellData.estimatedQuantity) < 1) newErrors.estimatedQuantity = 'Quantity must be at least 1';
         if (!sellData.pickupLocation) newErrors.pickupLocation = 'Pickup location is required';
         if (!sellData.name) newErrors.name = 'Name is required';
         if (!sellData.email) newErrors.email = 'Email is required';
@@ -150,6 +187,7 @@ export function QuoteForm() {
             data: quoteType === 'buy'
                 ? { ...buyData, palletType: palletTypeLabel }
                 : { ...sellData, palletCondition: conditionLabel },
+            photos: quoteType === 'sell' ? photos.map(p => p.base64) : [],
         };
 
         try {
@@ -192,6 +230,58 @@ export function QuoteForm() {
         const formattedValue = name === 'phone' ? formatPhoneNumber(value) : value;
         setSellData((prev) => ({ ...prev, [name]: formattedValue }));
         if (errors[name]) setErrors((prev) => ({ ...prev, [name]: undefined }));
+    };
+
+    const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (!files || files.length === 0) return;
+
+        setPhotoError(null);
+
+        // Check if adding these would exceed max
+        if (photos.length + files.length > MAX_PHOTOS) {
+            setPhotoError(`Maximum ${MAX_PHOTOS} photos allowed`);
+            return;
+        }
+
+        setIsProcessing(true);
+
+        try {
+            const newPhotos: ProcessedImage[] = [];
+
+            for (const file of Array.from(files)) {
+                // Validate file type
+                if (!file.type.startsWith('image/')) {
+                    setPhotoError(`${file.name} is not an image file`);
+                    continue;
+                }
+
+                // Validate size
+                if (file.size > MAX_FILE_SIZE) {
+                    setPhotoError(`${file.name} exceeds 5MB limit`);
+                    continue;
+                }
+
+                const processed = await processImage(file);
+                newPhotos.push(processed);
+            }
+
+            setPhotos(prev => [...prev, ...newPhotos]);
+        } catch (err) {
+            console.error('Photo processing error:', err);
+            setPhotoError('Failed to process image(s)');
+        } finally {
+            setIsProcessing(false);
+            // Reset file input
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
+        }
+    };
+
+    const removePhoto = (index: number) => {
+        setPhotos(prev => prev.filter((_, i) => i !== index));
+        setPhotoError(null);
     };
 
     if (isSubmitted) {
@@ -319,6 +409,16 @@ export function QuoteForm() {
                             error={errors.deliveryLocation}
                             placeholder="Address or city for delivery"
                         />
+
+                        <Input
+                            label="Need By Date"
+                            name="needByDate"
+                            type="date"
+                            value={buyData.needByDate}
+                            onChange={handleBuyChange}
+                            min={new Date().toISOString().split('T')[0]}
+                            placeholder="When do you need these pallets?"
+                        />
                     </>
                 ) : (
                     <>
@@ -360,11 +460,68 @@ export function QuoteForm() {
                         />
 
                         <div>
-                            <label className="block text-sm font-medium text-secondary-500 mb-2">Photos (Optional)</label>
-                            <div className="border-2 border-dashed border-secondary-200 rounded-lg p-8 text-center">
-                                <p className="text-secondary-400">Photo upload coming soon</p>
-                                <p className="text-secondary-300 text-sm mt-1">Drag & drop or click to upload pallet photos</p>
-                            </div>
+                            <label className="block text-sm font-medium text-secondary-500 mb-2">
+                                Photos (Optional) - Max {MAX_PHOTOS}
+                            </label>
+
+                            {/* Photo Previews */}
+                            {photos.length > 0 && (
+                                <div className="flex flex-wrap gap-3 mb-4">
+                                    {photos.map((photo, index) => (
+                                        <div key={index} className="relative group">
+                                            <img
+                                                src={photo.base64}
+                                                alt={photo.name}
+                                                className="w-20 h-20 object-cover rounded-lg border border-secondary-200"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => removePhoto(index)}
+                                                className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                            >
+                                                <X size={14} />
+                                            </button>
+                                            <span className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[10px] text-center py-0.5 rounded-b-lg">
+                                                {Math.round(photo.size / 1024)}KB
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Upload Area */}
+                            {photos.length < MAX_PHOTOS && (
+                                <label className="border-2 border-dashed border-secondary-200 rounded-lg p-6 text-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors block">
+                                    <input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        accept="image/*"
+                                        multiple
+                                        onChange={handlePhotoUpload}
+                                        className="hidden"
+                                        disabled={isProcessing}
+                                    />
+                                    {isProcessing ? (
+                                        <div className="flex items-center justify-center gap-2 text-secondary-400">
+                                            <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full" />
+                                            <span>Processing...</span>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <Upload className="mx-auto h-8 w-8 text-secondary-300 mb-2" />
+                                            <p className="text-secondary-400">Click to upload photos</p>
+                                            <p className="text-secondary-300 text-sm mt-1">
+                                                JPG, PNG up to 5MB each
+                                            </p>
+                                        </>
+                                    )}
+                                </label>
+                            )}
+
+                            {/* Error Message */}
+                            {photoError && (
+                                <p className="mt-2 text-sm text-red-500">{photoError}</p>
+                            )}
                         </div>
                     </>
                 )}

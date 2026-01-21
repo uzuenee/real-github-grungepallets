@@ -1,20 +1,42 @@
+import { Metadata } from 'next';
 import { MainLayout, ArticleLayout } from '@/components/layout';
 import { ARTICLES } from '@/lib/articles';
+import { ArticleJsonLd } from '@/components/seo/JsonLd';
 
-export const metadata = {
+export const metadata: Metadata = {
     title: 'Pallet Grades Explained: Grade A vs B vs C | Grunge Pallets',
     description: 'Learn the differences between Grade A, Grade B, and Grade C pallets. Understand which pallet grade is right for your business needs and budget.',
+    openGraph: {
+        title: 'Pallet Grades Explained: Grade A vs B vs C',
+        description: 'Understanding pallet grades helps you choose the right option for your business. Learn about Grade A, B, and C differences.',
+        type: 'article',
+        publishedTime: '2024-12-15',
+        authors: ['Grunge Pallets Team'],
+    },
+    twitter: {
+        card: 'summary_large_image',
+        title: 'Pallet Grades Explained',
+        description: 'Learn the differences between Grade A, Grade B, and Grade C pallets.',
+    },
 };
 
 export default function PalletGradesExplainedPage() {
+    const article = ARTICLES.find(a => a.slug === 'pallet-grades-explained')!;
     const relatedArticles = ARTICLES.filter(a => a.slug !== 'pallet-grades-explained').slice(0, 3);
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://grungepallets.com';
 
     return (
         <MainLayout>
+            <ArticleJsonLd
+                article={article}
+                url={`${siteUrl}/resources/pallet-grades-explained`}
+            />
             <ArticleLayout
                 title="Pallet Grades Explained: Grade A vs Grade B vs Grade C"
                 date="December 15, 2024"
                 category="Education"
+                readingTime={5}
+                author="Grunge Pallets Team"
                 relatedArticles={relatedArticles}
             >
                 <p className="text-xl text-secondary-400 mb-8">

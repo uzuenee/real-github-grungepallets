@@ -52,15 +52,23 @@ async function getUserNotificationPreferences(userId: string): Promise<Notificat
     }
 }
 
+// Attachment type for Resend
+interface EmailAttachment {
+    filename: string;
+    content: string; // base64 content without data URL prefix
+}
+
 // Base send email function
 async function sendEmail({
     to,
     subject,
     html,
+    attachments = [],
 }: {
     to: string;
     subject: string;
     html: string;
+    attachments?: EmailAttachment[];
 }): Promise<EmailResult> {
     if (!process.env.RESEND_API_KEY) {
         console.warn('[Email] RESEND_API_KEY not configured, skipping email');
@@ -68,12 +76,28 @@ async function sendEmail({
     }
 
     try {
-        const { error } = await getResendClient().emails.send({
+        const emailOptions: {
+            from: string;
+            to: string;
+            subject: string;
+            html: string;
+            attachments?: { filename: string; content: Buffer }[];
+        } = {
             from: FROM_EMAIL,
             to,
             subject,
             html,
-        });
+        };
+
+        // Add attachments if present
+        if (attachments.length > 0) {
+            emailOptions.attachments = attachments.map((att, i) => ({
+                filename: att.filename || `photo_${i + 1}.jpg`,
+                content: Buffer.from(att.content, 'base64'),
+            }));
+        }
+
+        const { error } = await getResendClient().emails.send(emailOptions);
 
         if (error) {
             console.error('[Email] Send failed:', error);
@@ -150,12 +174,7 @@ export async function sendOrderConfirmation({
     orderTotal: number;
     items: Array<{ product_name: string; quantity: number; unit_price: number }>;
 }): Promise<EmailResult> {
-    // Check user preferences
-    const prefs = await getUserNotificationPreferences(userId);
-    if (!prefs.order_confirmations) {
-        console.log(`[Email] User ${userId} has order_confirmations disabled, skipping`);
-        return { success: true }; // Return success since this is expected behavior
-    }
+    // Order confirmations are mandatory - no preference check needed
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 
@@ -503,6 +522,7 @@ export async function sendAdminQuoteNotification({
     company,
     phone,
     details,
+    photos = [],
 }: {
     type: 'buy' | 'sell';
     name: string;
@@ -510,6 +530,7 @@ export async function sendAdminQuoteNotification({
     company?: string;
     phone?: string;
     details: Record<string, string>;
+    photos?: string[];
 }): Promise<EmailResult> {
     if (!getAdminEmail()) {
         console.warn('[Email] getAdminEmail() not configured, skipping admin notification');
@@ -521,8 +542,29 @@ export async function sendAdminQuoteNotification({
         .map(([key, value]) => `<tr><td><strong>${key}:</strong></td><td>${value}</td></tr>`)
         .join('');
 
+    // Convert base64 data URLs to attachments
+    const attachments: EmailAttachment[] = photos.map((photo, i) => {
+        // Remove data URL prefix if present (e.g., "data:image/jpeg;base64,")
+        const base64Content = photo.includes(',') ? photo.split(',')[1] : photo;
+        return {
+            filename: `pallet_photo_${i + 1}.jpg`,
+            content: base64Content,
+        };
+    });
+
+    // Note about attached photos in email body
+    const photosHtml = photos.length > 0 ? `
+        <h3>Attached Photos</h3>
+        <p style="color: #666; font-size: 14px;">
+            📎 ${photos.length} photo${photos.length > 1 ? 's' : ''} attached to this email. 
+            Please see attachments below.
+        </p>
+    ` : '';
+
+    const emailTitle = type === 'buy' ? 'New Quote Request - Buy Pallets' : 'Pallet Pickup Requested';
+
     const html = wrapInTemplate(`
-        <h2>New Quote Request - ${type === 'buy' ? 'Buy Pallets' : 'Sell Pallets'}</h2>
+        <h2>${emailTitle}</h2>
         
         <h3>Contact Information</h3>
         <table>
@@ -537,14 +579,160 @@ export async function sendAdminQuoteNotification({
             ${detailsHtml}
         </table>
         
+        ${photosHtml}
+        
         <p style="margin-top: 24px;">
             <a href="mailto:${email}" class="button">Reply to ${name}</a>
         </p>
     `);
 
+    const subject = type === 'buy'
+        ? `Quote Request - ${name}${company ? ` (${company})` : ''}`
+        : `Pallet Pickup Requested - ${name}${company ? ` (${company})` : ''}`;
+
     return sendEmail({
         to: getAdminEmail(),
-        subject: `Quote Request: ${type === 'buy' ? 'Buy' : 'Sell'} - ${name}${company ? ` (${company})` : ''}`,
+        subject,
+        html,
+        attachments,
+    });
+}
+
+// =====================================
+// PICKUP REQUEST EMAILS
+// =====================================
+
+const conditionLabels: Record<string, string> = {
+    'grade-a': 'Grade A (Like new)',
+    'grade-b': 'Grade B (Good condition)',
+    'mixed': 'Mixed conditions',
+    'damaged': 'Damaged/Broken',
+};
+
+// Send pickup confirmation to customer
+export async function sendPickupConfirmationEmail({
+    customerEmail,
+    customerName,
+    pickupId,
+    palletCondition,
+    estimatedQuantity,
+    pickupAddress,
+    preferredDate,
+}: {
+    customerEmail: string;
+    customerName: string;
+    pickupId: string;
+    palletCondition: string;
+    estimatedQuantity: number;
+    pickupAddress: string;
+    preferredDate?: string;
+}): Promise<EmailResult> {
+    // Pickup confirmations are mandatory - no preference check needed
+
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+
+    const html = wrapInTemplate(`
+        <h2>Pickup Request Received!</h2>
+        <p>Hi ${customerName},</p>
+        <p>We've received your pallet pickup request and will review it shortly.</p>
+        
+        <h3>Request Details</h3>
+        <table>
+            <tr><td><strong>Request ID:</strong></td><td>${pickupId.slice(0, 8).toUpperCase()}</td></tr>
+            <tr><td><strong>Pallet Condition:</strong></td><td>${conditionLabels[palletCondition] || palletCondition}</td></tr>
+            <tr><td><strong>Estimated Quantity:</strong></td><td>${estimatedQuantity} pallets</td></tr>
+            <tr><td><strong>Pickup Address:</strong></td><td>${pickupAddress}</td></tr>
+            ${preferredDate ? `<tr><td><strong>Preferred Date:</strong></td><td>${new Date(preferredDate).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</td></tr>` : ''}
+        </table>
+        
+        <h3>What Happens Next</h3>
+        <ol style="color: #666; line-height: 1.8;">
+            <li>We'll review your request and contact you to schedule a pickup date</li>
+            <li>Our team will arrive to collect and count your pallets</li>
+            <li>You'll receive payment based on the final quantity and condition</li>
+        </ol>
+        
+        <p style="text-align: center; margin-top: 32px;">
+            <a href="${siteUrl}/portal/pickups" class="button">View Your Pickups</a>
+        </p>
+        
+        <p style="color: #999; font-size: 12px; margin-top: 24px;">
+            Questions? Reply to this email or call us at (678) 881-8282.
+        </p>
+    `);
+
+    return sendEmail({
+        to: customerEmail,
+        subject: `Pickup Request Received - #${pickupId.slice(0, 8).toUpperCase()}`,
+        html,
+    });
+}
+
+// Send pickup notification to admin
+export async function sendAdminPickupNotification({
+    customerName,
+    customerEmail,
+    customerPhone,
+    companyName,
+    pickupId,
+    palletCondition,
+    estimatedQuantity,
+    pickupAddress,
+    preferredDate,
+    notes,
+}: {
+    customerName: string;
+    customerEmail: string;
+    customerPhone?: string;
+    companyName?: string;
+    pickupId: string;
+    palletCondition: string;
+    estimatedQuantity: number;
+    pickupAddress: string;
+    preferredDate?: string;
+    notes?: string;
+}): Promise<EmailResult> {
+    const adminEmail = getAdminEmail();
+    if (!adminEmail) {
+        console.warn('[Email] ADMIN_EMAIL not configured, skipping admin notification');
+        return { success: false, error: 'Admin email not configured' };
+    }
+
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+
+    const html = wrapInTemplate(`
+        <h2>🚛 New Pickup Request</h2>
+        
+        <h3>Customer Information</h3>
+        <table>
+            ${companyName ? `<tr><td><strong>Company:</strong></td><td>${companyName}</td></tr>` : ''}
+            <tr><td><strong>Contact:</strong></td><td>${customerName}</td></tr>
+            <tr><td><strong>Email:</strong></td><td><a href="mailto:${customerEmail}">${customerEmail}</a></td></tr>
+            ${customerPhone ? `<tr><td><strong>Phone:</strong></td><td>${customerPhone}</td></tr>` : ''}
+        </table>
+        
+        <h3>Pickup Details</h3>
+        <table>
+            <tr><td><strong>Request ID:</strong></td><td>${pickupId.slice(0, 8).toUpperCase()}</td></tr>
+            <tr><td><strong>Condition:</strong></td><td>${conditionLabels[palletCondition] || palletCondition}</td></tr>
+            <tr><td><strong>Quantity:</strong></td><td>${estimatedQuantity} pallets</td></tr>
+            <tr><td><strong>Address:</strong></td><td>${pickupAddress}</td></tr>
+            ${preferredDate ? `<tr><td><strong>Preferred Date:</strong></td><td>${new Date(preferredDate).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</td></tr>` : ''}
+        </table>
+
+        ${notes ? `
+        <h3>Customer Notes</h3>
+        <p style="background: #f5f5f5; padding: 12px; border-radius: 8px; color: #666;">${notes}</p>
+        ` : ''}
+        
+        <p style="text-align: center; margin-top: 32px;">
+            <a href="${siteUrl}/admin" class="button">Manage in Admin Panel</a>
+        </p>
+    `);
+
+    return sendEmail({
+        to: adminEmail,
+        subject: `New Pickup Request - ${companyName || customerName} (${estimatedQuantity} pallets)`,
         html,
     });
 }

@@ -61,7 +61,14 @@ export async function PATCH(request: NextRequest) {
             .single();
 
         const currentPrefs = profile?.notification_preferences || DEFAULT_PREFERENCES;
-        const updatedPrefs = { ...currentPrefs, ...preferences };
+        const updatedPrefs = {
+            ...currentPrefs,
+            ...preferences,
+            // Force mandatory notifications to always be true
+            order_confirmations: true,
+            shipping_updates: true,
+            delivery_notifications: true,
+        };
 
         // Save to profile
         const { error } = await supabase

@@ -1,22 +1,45 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { Badge, Button } from '@/components/ui';
 import { Package } from 'lucide-react';
-import { Product } from '@/lib/types';
+
+// Use database product type directly
+interface DbProduct {
+    id: string;
+    name: string;
+    size: string;
+    dimensions: string;
+    is_heat_treated: boolean;
+    image_url?: string;
+    category_label?: string;
+}
 
 interface ProductCardProps {
-    product: Product;
+    product: DbProduct;
 }
 
 export function ProductCard({ product }: ProductCardProps) {
     return (
         <div className="bg-white rounded-xl border border-secondary-100 overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-xl group">
-            {/* Image Placeholder */}
+            {/* Image or Placeholder */}
             <div className="aspect-square bg-secondary-50 flex flex-col items-center justify-center relative">
-                <Package size={48} className="text-secondary-200 mb-2" strokeWidth={1} />
-                <span className="text-secondary-300 text-sm font-medium">{product.dimensions}</span>
+                {product.image_url ? (
+                    <Image
+                        src={product.image_url}
+                        alt={product.name}
+                        fill
+                        className="object-cover"
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                    />
+                ) : (
+                    <>
+                        <Package size={48} className="text-secondary-200 mb-2" strokeWidth={1} />
+                        <span className="text-secondary-300 text-sm font-medium">{product.dimensions}</span>
+                    </>
+                )}
 
                 {/* Heat Treated Badge */}
-                {product.isHeatTreated && (
+                {product.is_heat_treated && (
                     <div className="absolute top-3 right-3">
                         <Badge variant="success">Heat Treated</Badge>
                     </div>
@@ -29,23 +52,17 @@ export function ProductCard({ product }: ProductCardProps) {
                     {product.name}
                 </h3>
 
-                {/* Specs List */}
+                {/* Specs List - Only real database fields */}
                 <ul className="space-y-2 mb-5 text-sm">
+                    {product.category_label && (
+                        <li className="flex justify-between text-secondary-400">
+                            <span>Category:</span>
+                            <span className="font-medium text-secondary">{product.category_label}</span>
+                        </li>
+                    )}
                     <li className="flex justify-between text-secondary-400">
-                        <span>Size:</span>
-                        <span className="font-medium text-secondary">{product.size}</span>
-                    </li>
-                    <li className="flex justify-between text-secondary-400">
-                        <span>Wood Type:</span>
-                        <span className="font-medium text-secondary">{product.woodType}</span>
-                    </li>
-                    <li className="flex justify-between text-secondary-400">
-                        <span>Load Capacity:</span>
-                        <span className="font-medium text-secondary">{product.loadCapacity}</span>
-                    </li>
-                    <li className="flex justify-between text-secondary-400">
-                        <span>Entry:</span>
-                        <span className="font-medium text-secondary">{product.entryType}</span>
+                        <span>Dimensions:</span>
+                        <span className="font-medium text-secondary">{product.dimensions}</span>
                     </li>
                 </ul>
 

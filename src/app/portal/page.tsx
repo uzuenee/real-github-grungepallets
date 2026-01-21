@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { PortalLayout } from '@/components/layout';
 import { Card, Button, Badge } from '@/components/ui';
-import { ShoppingBag, ClipboardList, Phone } from 'lucide-react';
+import { ShoppingBag, ClipboardList, Truck } from 'lucide-react';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { Order } from '@/lib/supabase/types';
 
@@ -92,7 +92,7 @@ export default function PortalDashboardPage() {
             </div>
 
             {/* Quick Actions */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <Card padding="lg" className="flex items-center gap-6">
                     <div className="flex-shrink-0 w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
                         <ShoppingBag size={28} />
@@ -102,6 +102,19 @@ export default function PortalDashboardPage() {
                         <p className="text-secondary-400 text-sm mb-3">Browse our catalog and place an order.</p>
                         <Link href="/portal/shop">
                             <Button variant="primary" size="sm">Shop Now</Button>
+                        </Link>
+                    </div>
+                </Card>
+
+                <Card padding="lg" className="flex items-center gap-6">
+                    <div className="flex-shrink-0 w-14 h-14 rounded-xl bg-green-500/10 flex items-center justify-center text-green-600">
+                        <Truck size={28} />
+                    </div>
+                    <div className="flex-1">
+                        <h3 className="font-bold text-secondary mb-1">Sell your pallets</h3>
+                        <p className="text-secondary-400 text-sm mb-3">Schedule a free pickup for pallets.</p>
+                        <Link href="/portal/pickups">
+                            <Button variant="outline" size="sm">Request Pickup</Button>
                         </Link>
                     </div>
                 </Card>
