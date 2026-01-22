@@ -81,7 +81,7 @@ export function OrganizationJsonLd({
         logo: `${url}/logo.png`,
         contactPoint: {
             '@type': 'ContactPoint',
-            telephone: '+1-404-555-7255',
+            telephone: '+1-770-934-8248',
             contactType: 'customer service',
         },
         sameAs: [],

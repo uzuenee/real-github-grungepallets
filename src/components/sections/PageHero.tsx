@@ -25,7 +25,7 @@ export function PageHero({ title, subtitle, backgroundImage }: PageHeroProps) {
 
             {/* Content */}
             <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white leading-tight mb-6">
+                <h1 className="font-display text-5xl sm:text-6xl lg:text-7xl tracking-wide text-white leading-none mb-6 uppercase">
                     {title}
                 </h1>
                 {subtitle && (

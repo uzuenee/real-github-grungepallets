@@ -1,4 +1,4 @@
-import { Package } from 'lucide-react';
+
 
 const milestones = [
     {
@@ -31,7 +31,7 @@ export function AboutContent() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center mb-20">
                     {/* Text Content */}
                     <div>
-                        <h2 className="text-3xl sm:text-4xl font-bold text-secondary mb-6">
+                        <h2 className="section-heading text-secondary mb-6">
                             Built on Reliability
                         </h2>
                         <div className="space-y-4 text-secondary-400 leading-relaxed">
@@ -55,10 +55,14 @@ export function AboutContent() {
                         </div>
                     </div>
 
-                    {/* Image Placeholder */}
+                    {/* Company Image */}
                     <div className="relative">
-                        <div className="aspect-[4/3] bg-secondary-50 rounded-2xl flex items-center justify-center">
-                            <Package size={80} className="text-secondary-200" strokeWidth={1} />
+                        <div className="aspect-[4/3] rounded-2xl overflow-hidden shadow-xl">
+                            <img
+                                src="/About_company_team.png"
+                                alt="Grunge Pallets team at our warehouse facility"
+                                className="w-full h-full object-cover"
+                            />
                         </div>
                         {/* Decorative accent */}
                         <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-primary/10 rounded-xl -z-10" />

@@ -12,15 +12,17 @@ export function Hero() {
 
     return (
         <section className="relative min-h-[calc(100vh-5rem)] flex items-center justify-center overflow-hidden">
-            {/* Background with gradient overlay */}
+            {/* Background Image */}
             <div
-                className="absolute inset-0 bg-gradient-to-br from-secondary via-secondary-600 to-secondary-400"
+                className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+                style={{ backgroundImage: "url('/Hero page.png')" }}
                 aria-hidden="true"
             >
+                {/* Dark overlay for text readability */}
+                <div className="absolute inset-0 bg-gradient-to-br from-secondary/90 via-secondary/80 to-secondary/70" />
                 {/* Decorative elements */}
                 <div className="absolute top-20 left-10 w-72 h-72 bg-primary/10 rounded-full blur-3xl" />
                 <div className="absolute bottom-20 right-10 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-radial from-primary/5 to-transparent rounded-full" />
             </div>
 
             {/* Content */}
@@ -32,7 +34,7 @@ export function Hero() {
                 </div>
 
                 {/* Headline */}
-                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white leading-tight mb-6">
+                <h1 className="font-display text-5xl sm:text-6xl lg:text-7xl tracking-wide text-white leading-none mb-6 uppercase">
                     Your Trusted Partner in{' '}
                     <span className="text-primary">Pallet Solutions</span>
                 </h1>

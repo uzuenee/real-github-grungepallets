@@ -9,7 +9,7 @@ export const ARTICLES: Article[] = [
         date: 'December 15, 2024',
         readingTime: 5,
         author: 'Grunge Pallets Team',
-        image: '/images/articles/pallet-grades.jpg',
+        image: '/Pallet-Grades.png',
     },
     {
         slug: 'sustainability-report-2024',
@@ -19,7 +19,7 @@ export const ARTICLES: Article[] = [
         date: 'December 10, 2024',
         readingTime: 8,
         author: 'Grunge Pallets Team',
-        image: '/images/articles/sustainability.jpg',
+        image: '/Sustainability_report.png',
     },
     {
         slug: 'choosing-right-pallet',
@@ -29,7 +29,7 @@ export const ARTICLES: Article[] = [
         date: 'December 5, 2024',
         readingTime: 6,
         author: 'Grunge Pallets Team',
-        image: '/images/articles/choosing-pallets.jpg',
+        image: '/Choosing-Right-Pallet.jpeg',
     },
     {
         slug: 'recycling-benefits',
@@ -39,7 +39,7 @@ export const ARTICLES: Article[] = [
         date: 'November 28, 2024',
         readingTime: 4,
         author: 'Grunge Pallets Team',
-        image: '/images/articles/recycling.jpg',
+        image: '/Recycling-Benefits.jpeg',
     },
 ];
 

@@ -160,10 +160,10 @@ export const STATS: Stat[] = [
 export const COMPANY_INFO: CompanyInfo = {
     name: 'Grunge Pallets & Recycling Services',
     tagline: 'Your trusted partner in sustainable pallet solutions for Metro Atlanta businesses.',
-    address: '1234 Industrial Blvd',
-    city: 'Atlanta',
+    address: '1925 Jason Industrial Parkway',
+    city: 'Winston',
     state: 'GA',
-    zip: '30318',
-    phone: '(404) 555-7255',
+    zip: '30187',
+    phone: '(770) 934-8248',
     email: 'info@grungepallets.com',
 };

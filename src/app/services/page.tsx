@@ -28,6 +28,7 @@ export default function ServicesPage() {
             <PageHero
                 title="Our Services"
                 subtitle="Complete pallet solutions for your business"
+                backgroundImage="/services_hero.png"
             />
             <ServicesGrid />
             <HowItWorks />

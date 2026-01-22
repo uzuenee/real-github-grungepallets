@@ -33,8 +33,18 @@ export function ArticleCard({ article, featured = false }: ArticleCardProps) {
             <article className="relative bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow group">
                 <Link href={`/resources/${article.slug}`} className="block">
                     {/* Featured Image Area */}
-                    <div className={`h-64 bg-gradient-to-br ${config.bg} flex items-center justify-center relative`}>
-                        {config.icon}
+                    <div className="h-64 relative overflow-hidden">
+                        {article.image ? (
+                            <img
+                                src={article.image}
+                                alt={article.title}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            />
+                        ) : (
+                            <div className={`w-full h-full bg-gradient-to-br ${config.bg} flex items-center justify-center`}>
+                                {config.icon}
+                            </div>
+                        )}
                         <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors" />
                     </div>
 
@@ -72,9 +82,19 @@ export function ArticleCard({ article, featured = false }: ArticleCardProps) {
     return (
         <article className="bg-white rounded-xl border border-secondary-100 overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-xl group">
             <Link href={`/resources/${article.slug}`} className="block">
-                {/* Image Placeholder with gradient */}
-                <div className={`aspect-video bg-gradient-to-br ${config.bg} flex items-center justify-center relative`}>
-                    {config.icon}
+                {/* Article Image */}
+                <div className="aspect-video relative overflow-hidden">
+                    {article.image ? (
+                        <img
+                            src={article.image}
+                            alt={article.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                    ) : (
+                        <div className={`w-full h-full bg-gradient-to-br ${config.bg} flex items-center justify-center`}>
+                            {config.icon}
+                        </div>
+                    )}
                     <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors" />
                 </div>
 

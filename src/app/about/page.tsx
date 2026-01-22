@@ -28,6 +28,7 @@ export default function AboutPage() {
             <PageHero
                 title="About Us"
                 subtitle="Your trusted partner in pallet solutions since 2010"
+                backgroundImage="/about_page_hero.png"
             />
             <AboutContent />
             <ValuesSection />

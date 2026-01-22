@@ -154,8 +154,8 @@ function wrapInTemplate(content: string): string {
         </div>
         <div class="footer">
             <p>Grunge Pallets & Recycling Services</p>
-            <p>1234 Industrial Blvd, Atlanta, GA 30318</p>
-            <p>(404) 555-7255 | info@grungepallets.com</p>
+            <p>1925 Jason Industrial Parkway, Winston, GA 30187</p>
+            <p>(770) 934-8248 | info@grungepallets.com</p>
         </div>
     </div>
 </body>

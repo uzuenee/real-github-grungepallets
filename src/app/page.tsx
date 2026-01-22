@@ -7,7 +7,7 @@ import {
     SustainabilityScore,
     ServicesPreview,
     ProductsPreview,
-    TrustLogos,
+    // TrustLogos, // Temporarily hidden
     CtaBanner,
 } from '@/components/sections';
 
@@ -19,7 +19,7 @@ export default function Home() {
             <SustainabilityScore />
             <ServicesPreview />
             <ProductsPreview />
-            <TrustLogos />
+            {/* <TrustLogos /> */}
             <CtaBanner />
         </MainLayout>
     );
