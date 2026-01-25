@@ -312,13 +312,23 @@ export default function AdminPage() {
                 body: JSON.stringify({ [field]: value }),
             });
 
+            let payload: any = null;
+            try {
+                payload = await response.json();
+            } catch {
+                payload = null;
+            }
+
             if (response.ok) {
                 setUsers(prev => prev.map(user =>
                     user.id === userId ? { ...user, [field]: value } : user
                 ));
+
+                if (field === 'approved' && value === true && payload?.approvalEmail?.success === false) {
+                    alert(payload?.approvalEmail?.error || 'User approved, but approval email failed to send');
+                }
             } else {
-                const error = await response.json();
-                alert(error.error || 'Failed to update user');
+                alert(payload?.error || 'Failed to update user');
             }
         } catch (err) {
             console.error('Update user error:', err);

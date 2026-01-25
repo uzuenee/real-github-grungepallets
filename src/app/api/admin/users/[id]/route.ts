@@ -92,23 +92,28 @@ export async function PATCH(
         }
 
         // Send approval email if user was just approved
+        let approvalEmailResult: { success: boolean; error?: string } | undefined;
         if (approved === true && currentProfile && !currentProfile.approved) {
             // Get email from auth.users via admin API
             const { data: authUser } = await adminSupabase.auth.admin.getUserById(id);
             const userEmail = authUser?.user?.email;
 
             if (userEmail) {
-                sendUserApprovedEmail({
-                    userEmail: userEmail,
+                approvalEmailResult = await sendUserApprovedEmail({
+                    userEmail,
                     userName: currentProfile.contact_name || 'User',
                     companyName: currentProfile.company_name || 'Your Company',
-                }).catch(err => console.error('[User Approval] Email error:', err));
+                });
+
+                if (!approvalEmailResult.success) {
+                    console.error('[User Approval] Email failed:', approvalEmailResult.error);
+                }
             } else {
                 console.warn('[User Approval] No email found for user:', id);
             }
         }
 
-        return NextResponse.json({ user: data });
+        return NextResponse.json({ user: data, approvalEmail: approvalEmailResult });
     } catch (err) {
         console.error('User update API error:', err);
         return NextResponse.json({ error: 'Invalid request body', details: String(err) }, { status: 400 });

@@ -506,8 +506,8 @@ export async function sendUserApprovedEmail({
 
     const html = wrapInTemplate(`
         <h2>Account Approved!</h2>
-        <p>Hi ${userName},</p>
-        <p>Great news! Your account for <strong>${companyName}</strong> has been approved.</p>
+        <p>Hi ${safeHtml(userName)},</p>
+        <p>Great news! Your account for <strong>${safeHtml(companyName)}</strong> has been approved.</p>
         <p>You can now access the client portal to browse products, place orders, and manage your account.</p>
         
         <p style="text-align: center; margin-top: 32px;">
