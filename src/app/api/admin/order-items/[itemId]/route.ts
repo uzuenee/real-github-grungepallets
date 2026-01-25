@@ -98,7 +98,7 @@ export async function PATCH(
 
                 if (customerEmail) {
                     const updates = [
-                        `Pricing updated for <strong>${existingItem.product_name}</strong>: $${previousUnitPrice.toFixed(2)} → $${unit_price.toFixed(2)}.`,
+                        `Pricing updated for <strong>${existingItem.product_name}</strong>: $${previousUnitPrice.toFixed(2)} &rarr; $${unit_price.toFixed(2)}.`,
                     ];
 
                     sendOrderDetailsUpdated({
