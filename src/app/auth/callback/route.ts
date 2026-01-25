@@ -3,6 +3,22 @@ import { NextResponse } from 'next/server';
 import { sendAdminNewUserNotification } from '@/lib/email';
 import { safeRedirectPath } from '@/lib/security/safeRedirect';
 
+function getRecentConfirmationTimestamp(user: { email_confirmed_at?: string | null; confirmed_at?: string | null } | null): number | null {
+    const value = user?.email_confirmed_at || user?.confirmed_at;
+    if (!value) return null;
+
+    const parsed = Date.parse(value);
+    return Number.isFinite(parsed) ? parsed : null;
+}
+
+function wasRecentlyConfirmed(user: { email_confirmed_at?: string | null; confirmed_at?: string | null } | null, maxAgeMs = 15 * 60 * 1000): boolean {
+    const confirmedAtMs = getRecentConfirmationTimestamp(user);
+    if (!confirmedAtMs) return false;
+
+    const ageMs = Date.now() - confirmedAtMs;
+    return ageMs >= 0 && ageMs <= maxAgeMs;
+}
+
 export async function GET(request: Request) {
     const { searchParams, origin } = new URL(request.url);
     const code = searchParams.get('code');
@@ -23,7 +39,7 @@ export async function GET(request: Request) {
             const { data: { user } } = await supabase.auth.getUser();
 
             if (user) {
-                // Note: email is NOT in profiles table, use user.email from auth
+                const userMetadata = (user.user_metadata || {}) as Record<string, unknown>;
                 const { data: profile } = await supabase
                     .from('profiles')
                     .select('approved, is_admin, contact_name, company_name')
@@ -31,11 +47,14 @@ export async function GET(request: Request) {
                     .single();
 
                 // If not yet approved (new user), send admin notification
-                if (profile && !profile.approved) {
+                if (profile && !profile.approved && wasRecentlyConfirmed(user)) {
+                    const fallbackName = typeof userMetadata.contact_name === 'string' ? userMetadata.contact_name : '';
+                    const fallbackCompany = typeof userMetadata.company_name === 'string' ? userMetadata.company_name : '';
+
                     sendAdminNewUserNotification({
-                        userName: profile.contact_name || 'New User',
+                        userName: profile.contact_name || fallbackName || 'New User',
                         userEmail: user.email || '',
-                        companyName: profile.company_name || 'Unknown Company',
+                        companyName: profile.company_name || fallbackCompany || 'Unknown Company',
                     }).catch(err => console.error('[Auth Callback] Admin notification error:', err));
                 }
 

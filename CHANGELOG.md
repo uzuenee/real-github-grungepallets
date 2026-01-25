@@ -26,6 +26,7 @@ For a full file-by-file diff, see `docs/CHANGES_SINCE_LAST_COMMIT.md` (created a
 - Profile API: fetch/update profile fields with request-size limits + rate limiting (`src/app/api/profile/route.ts`)
 - Password change API: verifies current password + rate limiting (`src/app/api/profile/password/route.ts`)
 - Notification preferences API: persisted preferences with mandatory transactional toggles enforced (`src/app/api/profile/notifications/route.ts`)
+- Signup confirmation: redirect new signups to `/pending-approval` and reduce admin "new user" email noise to recent confirmations (`src/app/auth/callback/route.ts`, `src/app/auth/confirm/route.ts`, `src/lib/contexts/AuthContext.tsx`)
 - Portal UX updates across cart/checkout/orders/reset-password/signup flows (`src/app/portal/**`, `src/app/reset-password/page.tsx`, `src/app/signup/page.tsx`)
 
 ### Forms -> n8n Webhooks

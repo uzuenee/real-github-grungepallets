@@ -101,11 +101,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     const signUp = async (email: string, password: string, profileData: Partial<Profile>) => {
+        const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || window.location.origin).replace(/\/$/, '');
+        const emailRedirectTo = `${siteUrl}/auth/callback`;
+
         // First, create the user
-        const { data, error } = await supabase.auth.signUp({
+        let { data, error } = await supabase.auth.signUp({
             email,
             password,
             options: {
+                emailRedirectTo,
                 data: {
                     company_name: profileData.company_name || '',
                     contact_name: profileData.contact_name || '',
@@ -117,6 +121,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 },
             },
         });
+
+        // Fallback if the Supabase project doesn't allow this redirect URL yet.
+        if (error && /redirect/i.test(error.message)) {
+            ({ data, error } = await supabase.auth.signUp({
+                email,
+                password,
+                options: {
+                    data: {
+                        company_name: profileData.company_name || '',
+                        contact_name: profileData.contact_name || '',
+                        phone: profileData.phone || '',
+                        address: profileData.address || '',
+                        city: profileData.city || '',
+                        state: profileData.state || '',
+                        zip: profileData.zip || '',
+                    },
+                },
+            }));
+        }
 
         if (error) {
             return { error };
