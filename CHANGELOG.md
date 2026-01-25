@@ -32,8 +32,9 @@ For a full file-by-file diff, see `docs/CHANGES_SINCE_LAST_COMMIT.md` (created a
 - Signup form: city/state/zip input formatting (city: letters only; state: 2-letter code; ZIP: 5 digits) (`src/app/signup/page.tsx`)
 - Portal UX updates across cart/checkout/orders/reset-password/signup flows (`src/app/portal/**`, `src/app/reset-password/page.tsx`, `src/app/signup/page.tsx`)
 
-### Forms -> n8n Webhooks
+### Forms -> n8n Webhooks -> Airtable
 
+- Creating and Testing the workflows and making sure everything works properly
 - Public form intake routes: `POST /api/forms/contact`, `POST /api/forms/quote`, `POST /api/forms/pickup`
 - Server-side forwarding to n8n with HMAC (`X-Signature`) + idempotency (`X-Idempotency-Key`) using `N8N_WEBHOOK_SECRET`
 - Abuse controls: request size checks + best-effort rate limiting on public endpoints (`src/lib/security/**`)
@@ -55,3 +56,6 @@ For a full file-by-file diff, see `docs/CHANGES_SINCE_LAST_COMMIT.md` (created a
 
 - Build stability: disabled Next experimental `workerThreads` to avoid noisy build-time runtime errors (`next.config.js`)
 - Tests updated/added for webhook/security utilities (`src/__tests__/n8nWebhook.test.ts`, `src/__tests__/security.test.ts`)
+
+### N8N 
+
