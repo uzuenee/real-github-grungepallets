@@ -23,8 +23,8 @@ export async function GET() {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Fetch all profiles
-    const { data: users, error } = await supabase
+    // Fetch all profiles (use admin client to bypass RLS)
+    const { data: users, error } = await adminClient
         .from('profiles')
         .select('*')
         .order('created_at', { ascending: false });
@@ -34,5 +34,25 @@ export async function GET() {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ users });
+    // Attach auth.users emails (not stored in profiles)
+    const emailByUserId = new Map<string, string | null>();
+    const perPage = 1000;
+    for (let page = 1; page <= 10; page++) {
+        const { data, error: listError } = await adminClient.auth.admin.listUsers({ page, perPage });
+        if (listError) {
+            console.error('Admin users listUsers error:', listError);
+            break;
+        }
+        for (const authUser of data.users) {
+            emailByUserId.set(authUser.id, authUser.email ?? null);
+        }
+        if (data.users.length < perPage) break;
+    }
+
+    const usersWithEmail = (users || []).map((u) => ({
+        ...u,
+        email: emailByUserId.get(u.id) ?? null,
+    }));
+
+    return NextResponse.json({ users: usersWithEmail });
 }

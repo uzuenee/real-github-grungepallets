@@ -115,7 +115,7 @@ export default function AdminPage() {
     const [savingDeliveryPrice, setSavingDeliveryPrice] = useState(false);
 
     // Users state
-    const [users, setUsers] = useState<Profile[]>([]);
+    const [users, setUsers] = useState<Array<Profile & { email?: string | null }>>([]);
     const [usersLoading, setUsersLoading] = useState(true);
     const [updatingUser, setUpdatingUser] = useState<string | null>(null);
 
@@ -870,6 +870,14 @@ export default function AdminPage() {
                                                         <div className="flex items-center gap-2">
                                                             <div>
                                                                 <p className="font-semibold text-secondary">{user.company_name || 'N/A'}</p>
+                                                                {user.email && (
+                                                                    <a
+                                                                        href={`mailto:${user.email}`}
+                                                                        className="block text-xs text-secondary-400 hover:text-primary transition-colors break-all"
+                                                                    >
+                                                                        {user.email}
+                                                                    </a>
+                                                                )}
                                                                 <p className="text-xs text-secondary-400">{user.phone}</p>
                                                             </div>
                                                             {user.id === currentUserId && (
