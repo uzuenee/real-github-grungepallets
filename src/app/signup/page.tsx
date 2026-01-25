@@ -54,6 +54,9 @@ export default function SignupPage() {
         else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = 'Invalid email';
         if (!formData.phone) newErrors.phone = 'Phone number is required';
         else if (formData.phone.replace(/\D/g, '').length < 10) newErrors.phone = 'Please enter a valid phone number';
+        if (formData.city && formData.city.trim().length < 2) newErrors.city = 'Please enter a valid city';
+        if (formData.state && !/^[A-Z]{2}$/.test(formData.state.trim().toUpperCase())) newErrors.state = 'Use 2-letter state code (e.g. GA)';
+        if (formData.zip && !/^\d{5}$/.test(formData.zip.trim())) newErrors.zip = 'ZIP must be 5 digits';
         if (!formData.password) newErrors.password = 'Password is required';
         else if (formData.password.length < 8) newErrors.password = 'Password must be at least 8 characters';
         if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = 'Passwords do not match';
@@ -91,7 +94,18 @@ export default function SignupPage() {
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value, type, checked } = e.target;
-        const formattedValue = name === 'phone' ? formatPhoneNumber(value) : value;
+
+        let formattedValue = value;
+        if (name === 'phone') {
+            formattedValue = formatPhoneNumber(value);
+        } else if (name === 'city') {
+            formattedValue = value.replace(/[^a-zA-Z .'-]/g, '').replace(/\s{2,}/g, ' ');
+        } else if (name === 'state') {
+            formattedValue = value.replace(/[^a-zA-Z]/g, '').toUpperCase().slice(0, 2);
+        } else if (name === 'zip') {
+            formattedValue = value.replace(/\D/g, '').slice(0, 5);
+        }
+
         setFormData((prev) => ({
             ...prev,
             [name]: type === 'checkbox' ? checked : formattedValue,
@@ -209,7 +223,9 @@ export default function SignupPage() {
                                 name="city"
                                 value={formData.city}
                                 onChange={handleChange}
+                                error={errors.city}
                                 placeholder="Atlanta"
+                                autoComplete="address-level2"
                             />
                         </div>
                         <div className="sm:col-span-1">
@@ -218,7 +234,10 @@ export default function SignupPage() {
                                 name="state"
                                 value={formData.state}
                                 onChange={handleChange}
+                                error={errors.state}
                                 placeholder="GA"
+                                autoComplete="address-level1"
+                                maxLength={2}
                             />
                         </div>
                         <div className="sm:col-span-2">
@@ -227,7 +246,12 @@ export default function SignupPage() {
                                 name="zip"
                                 value={formData.zip}
                                 onChange={handleChange}
+                                error={errors.zip}
                                 placeholder="30318"
+                                autoComplete="postal-code"
+                                inputMode="numeric"
+                                pattern="\\d{5}"
+                                maxLength={5}
                             />
                         </div>
                     </div>
