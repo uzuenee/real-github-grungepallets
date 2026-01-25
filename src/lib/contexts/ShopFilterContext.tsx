@@ -65,3 +65,7 @@ export function useShopFilter() {
     }
     return context;
 }
+
+export function useOptionalShopFilter() {
+    return useContext(ShopFilterContext) ?? null;
+}

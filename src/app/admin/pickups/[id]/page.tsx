@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Card, Button, Badge, Input } from '@/components/ui';
 import { ArrowLeft, Truck, User, MapPin, Calendar, Copy, Check, DollarSign } from 'lucide-react';
 
@@ -44,6 +45,7 @@ interface Pickup {
     notes: string | null;
     admin_notes: string | null;
     price_per_pallet: number | null;
+    pickup_charge: number | null;
     total_payout: number | null;
     created_at: string;
     updated_at: string;
@@ -64,6 +66,7 @@ export default function AdminPickupDetailPage() {
 
     // Editable fields
     const [pricePerPallet, setPricePerPallet] = useState('');
+    const [pickupCharge, setPickupCharge] = useState('');
     const [actualQuantity, setActualQuantity] = useState('');
     const [adminNotes, setAdminNotes] = useState('');
 
@@ -76,6 +79,7 @@ export default function AdminPickupDetailPage() {
                     setPickup(result.pickup);
                     // Initialize editable fields
                     setPricePerPallet(result.pickup.price_per_pallet?.toString() || '');
+                    setPickupCharge(result.pickup.pickup_charge?.toString() || '');
                     setActualQuantity(result.pickup.actual_quantity?.toString() || '');
                     setAdminNotes(result.pickup.admin_notes || '');
                 } else if (response.status === 404) {
@@ -138,8 +142,9 @@ export default function AdminPickupDetailPage() {
         setUpdating(true);
 
         const price = parseFloat(pricePerPallet) || 0;
+        const charge = parseFloat(pickupCharge) || 0;
         const quantity = parseInt(actualQuantity) || pickup.estimated_quantity;
-        const total = price * quantity;
+        const total = (price * quantity) - charge;
 
         try {
             const response = await fetch(`/api/admin/pickups/${pickupId}`, {
@@ -147,6 +152,7 @@ export default function AdminPickupDetailPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     price_per_pallet: price,
+                    pickup_charge: charge,
                     actual_quantity: quantity,
                     total_payout: total,
                     admin_notes: adminNotes,
@@ -157,6 +163,7 @@ export default function AdminPickupDetailPage() {
                 setPickup(prev => prev ? {
                     ...prev,
                     price_per_pallet: price,
+                    pickup_charge: charge,
                     actual_quantity: quantity,
                     total_payout: total,
                     admin_notes: adminNotes,
@@ -190,8 +197,9 @@ export default function AdminPickupDetailPage() {
     // Calculate payout preview
     const previewPayout = () => {
         const price = parseFloat(pricePerPallet) || 0;
+        const charge = parseFloat(pickupCharge) || 0;
         const quantity = parseInt(actualQuantity) || pickup?.estimated_quantity || 0;
-        return (price * quantity).toFixed(2);
+        return ((price * quantity) - charge).toFixed(2);
     };
 
     if (loading) {
@@ -232,7 +240,7 @@ export default function AdminPickupDetailPage() {
                     <div className="flex items-center justify-between h-16">
                         <div className="flex items-center gap-4">
                             <Link href="/" className="flex items-center">
-                                <img src="/logo.jpg" alt="Grunge Pallets" className="h-10 w-auto" />
+                                <Image src="/logo.jpg" alt="Grunge Pallets" width={140} height={40} className="h-10 w-auto" />
                             </Link>
                             <span className="px-2 py-1 bg-primary/10 text-primary text-xs font-semibold rounded">
                                 ADMIN
@@ -464,12 +472,37 @@ export default function AdminPickupDetailPage() {
                                         placeholder="e.g. 3.00"
                                     />
                                 </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-secondary-500 mb-2">
+                                        Pickup Charge ($)
+                                    </label>
+                                    <Input
+                                        type="number"
+                                        step="0.01"
+                                        value={pickupCharge}
+                                        onChange={(e) => setPickupCharge(e.target.value)}
+                                        placeholder="e.g. 25.00"
+                                    />
+                                    <p className="text-xs text-secondary-400 mt-1">
+                                        Fee for pickup service (deducted from payout)
+                                    </p>
+                                </div>
                                 <div className="border-t border-secondary-100 pt-4">
+                                    <div className="text-sm text-secondary-500 space-y-1 mb-2">
+                                        <div className="flex justify-between">
+                                            <span>Pallet value:</span>
+                                            <span>${((parseFloat(pricePerPallet) || 0) * (parseInt(actualQuantity) || pickup.estimated_quantity)).toFixed(2)}</span>
+                                        </div>
+                                        <div className="flex justify-between text-red-500">
+                                            <span>Pickup charge:</span>
+                                            <span>-${(parseFloat(pickupCharge) || 0).toFixed(2)}</span>
+                                        </div>
+                                    </div>
                                     <div className="flex justify-between text-lg">
                                         <span className="font-bold text-secondary">Total Payout:</span>
                                         <span className="font-bold text-green-600">${previewPayout()}</span>
                                     </div>
-                                    {pickup.total_payout && (
+                                    {pickup.total_payout !== null && (
                                         <p className="text-xs text-secondary-400 mt-1">
                                             Previously saved: ${pickup.total_payout.toFixed(2)}
                                         </p>

@@ -37,6 +37,7 @@ export default function ChoosingRightPalletPage() {
                 category="Guide"
                 readingTime={6}
                 author="Grunge Pallets Team"
+                image={article.image}
                 relatedArticles={relatedArticles}
             >
                 <p className="text-xl text-secondary-400 mb-8">

@@ -1,5 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { enforceMaxContentLength } from '@/lib/security/requestGuards';
+import { rateLimit } from '@/lib/security/rateLimit';
 
 const DEFAULT_PREFERENCES = {
     order_confirmations: true,
@@ -41,6 +43,14 @@ export async function PATCH(request: NextRequest) {
     }
 
     try {
+        const tooLarge = enforceMaxContentLength(request, 16 * 1024);
+        if (tooLarge) return tooLarge;
+
+        const limited = rateLimit(`profile:notifications:${user.id}`, { limit: 30, windowMs: 60_000 });
+        if (!limited.allowed) {
+            return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: limited.headers });
+        }
+
         const body = await request.json();
 
         // Validate preferences object

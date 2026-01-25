@@ -37,6 +37,7 @@ export default function SustainabilityReport2024Page() {
                 category="Sustainability"
                 readingTime={8}
                 author="Grunge Pallets Team"
+                image={article.image}
                 relatedArticles={relatedArticles}
             >
                 <p className="text-xl text-secondary-400 mb-8">

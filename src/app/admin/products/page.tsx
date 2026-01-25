@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Card, Button } from '@/components/ui';
 import {
     Package,
@@ -20,7 +21,6 @@ import {
     Search,
     X,
     Loader2,
-    Shield,
 } from 'lucide-react';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { Product, Category } from '@/lib/supabase/types';
@@ -181,128 +181,6 @@ function SortableCategoryItem({ category, productCount, onEdit, onDelete }: Sort
     );
 }
 
-// Sortable Product Row Component
-interface SortableProductRowProps {
-    product: Product;
-    categoryColor: string;
-    categoryLabel: string;
-    onEdit: () => void;
-    onDelete: () => void;
-}
-
-function SortableProductRow({ product, categoryColor, categoryLabel, onEdit, onDelete }: SortableProductRowProps) {
-    const {
-        attributes,
-        listeners,
-        setNodeRef,
-        transform,
-        transition,
-        isDragging,
-    } = useSortable({ id: product.id });
-
-    const style = {
-        transform: CSS.Transform.toString(transform),
-        transition,
-        opacity: isDragging ? 0.5 : 1,
-    };
-
-    return (
-        <tr
-            ref={setNodeRef}
-            style={style}
-            className={`hover:bg-secondary-50/50 transition-colors ${isDragging ? 'bg-primary/5' : ''}`}
-        >
-            <td className="px-2 py-4 w-8">
-                <button
-                    {...attributes}
-                    {...listeners}
-                    className="cursor-grab active:cursor-grabbing p-1 text-secondary-300 hover:text-secondary-500 touch-none"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="9" cy="12" r="1" /><circle cx="9" cy="5" r="1" /><circle cx="9" cy="19" r="1" />
-                        <circle cx="15" cy="12" r="1" /><circle cx="15" cy="5" r="1" /><circle cx="15" cy="19" r="1" />
-                    </svg>
-                </button>
-            </td>
-            <td className="px-4 py-4">
-                <div className="flex items-center gap-2">
-                    <div>
-                        <p className="font-semibold text-secondary">{product.name}</p>
-                        <p className="text-xs text-secondary-400 font-mono">{product.id.slice(0, 8)}...</p>
-                    </div>
-                    {product.is_protected && (
-                        <span title="Protected">
-                            <Shield size={14} className="text-purple-500" />
-                        </span>
-                    )}
-                </div>
-            </td>
-            <td className="px-4 py-4">
-                <span className={`inline-flex px-2.5 py-1 text-xs font-medium rounded-lg border ${categoryColor}`}>
-                    {categoryLabel}
-                </span>
-            </td>
-            <td className="px-4 py-4 text-secondary-500">
-                <div className="flex items-center gap-1">
-                    <Ruler size={14} className="text-secondary-300" />
-                    {product.dimensions}
-                </div>
-            </td>
-            <td className="px-4 py-4 text-right">
-                <div className="flex items-center justify-end gap-1">
-                    <DollarSign size={14} className="text-green-500" />
-                    <span className="font-semibold text-secondary">{Number(product.price).toFixed(2)}</span>
-                </div>
-            </td>
-            <td className="px-4 py-4 text-center">
-                {product.in_stock ? (
-                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-50 text-green-700 text-xs font-medium rounded-lg">
-                        <CheckCircle size={12} />
-                        In Stock
-                    </span>
-                ) : (
-                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-50 text-red-700 text-xs font-medium rounded-lg">
-                        <XCircle size={12} />
-                        Out
-                    </span>
-                )}
-            </td>
-            <td className="px-4 py-4 text-center">
-                <div className="flex items-center justify-center gap-1">
-                    {product.is_heat_treated && (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-orange-50 text-orange-700 text-xs font-medium rounded-lg" title="Heat Treated">
-                            <Flame size={12} />
-                        </span>
-                    )}
-                    {!product.is_heat_treated && <span className="text-secondary-300">—</span>}
-                </div>
-            </td>
-            <td className="px-6 py-4">
-                <div className="flex items-center justify-center gap-2">
-                    <button
-                        onClick={onEdit}
-                        className="p-2 text-blue-500 hover:bg-blue-50 rounded-full transition-colors"
-                        title="Edit product"
-                    >
-                        <Pencil size={16} />
-                    </button>
-                    <button
-                        onClick={onDelete}
-                        disabled={product.is_protected}
-                        className={`p-2 rounded-full transition-colors ${product.is_protected
-                            ? 'text-secondary-300 cursor-not-allowed'
-                            : 'text-red-500 hover:bg-red-50'
-                            }`}
-                        title={product.is_protected ? 'Protected product' : 'Delete product'}
-                    >
-                        <Trash2 size={16} />
-                    </button>
-                </div>
-            </td>
-        </tr>
-    );
-}
-
 export default function AdminProductsPage() {
     const { signOut, profile } = useAuth();
     const [activeTab, setActiveTab] = useState<AdminProductsTab>('products');
@@ -403,42 +281,6 @@ export default function AdminProductsPage() {
             }
         }
     }, [categories]);
-
-    // Handle product reorder via drag-and-drop
-    const handleProductDragEnd = useCallback(async (event: DragEndEvent) => {
-        const { active, over } = event;
-
-        if (over && active.id !== over.id) {
-            const oldIndex = products.findIndex((p) => p.id === active.id);
-            const newIndex = products.findIndex((p) => p.id === over.id);
-
-            // Optimistically update UI
-            const newProducts = arrayMove(products, oldIndex, newIndex);
-            setProducts(newProducts);
-
-            // Save new order to database
-            try {
-                const updates = newProducts.map((prod, index) => ({
-                    id: prod.id,
-                    sort_order: index,
-                }));
-
-                await Promise.all(
-                    updates.map((update) =>
-                        fetch(`/api/admin/products/${update.id}`, {
-                            method: 'PATCH',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ sort_order: update.sort_order }),
-                        })
-                    )
-                );
-            } catch (err) {
-                console.error('Failed to save product order:', err);
-                // Revert on error
-                fetchData();
-            }
-        }
-    }, [products]);
 
     // Filter and sort products
     const filteredProducts = products
@@ -695,7 +537,7 @@ export default function AdminProductsPage() {
                                 <ArrowLeft size={20} />
                             </Link>
                             <Link href="/" className="flex items-center">
-                                <img src="/logo.jpg" alt="Grunge Pallets" className="h-10 w-auto" />
+                                <Image src="/logo.jpg" alt="Grunge Pallets" width={140} height={40} className="h-10 w-auto" />
                             </Link>
                             <span className="px-2 py-1 bg-primary/10 text-primary text-xs font-semibold rounded">
                                 ADMIN
@@ -881,10 +723,13 @@ export default function AdminProductsPage() {
                                                         {/* Product Image Thumbnail */}
                                                         <div className="w-10 h-10 rounded-lg overflow-hidden bg-secondary-100 flex-shrink-0 flex items-center justify-center">
                                                             {product.image_url ? (
-                                                                <img
+                                                                <Image
                                                                     src={product.image_url}
                                                                     alt={product.name}
+                                                                    width={40}
+                                                                    height={40}
                                                                     className="w-full h-full object-cover"
+                                                                    sizes="40px"
                                                                 />
                                                             ) : (
                                                                 <Package size={18} className="text-secondary-300" />
@@ -1123,7 +968,10 @@ export default function AdminProductsPage() {
                                     </div>
                                     {productForm.length && productForm.width && (
                                         <p className="text-xs text-secondary-400 mt-2">
-                                            Preview: <span className="font-medium text-secondary">{productForm.length}" × {productForm.width}" × {productForm.height || '6'}"</span>
+                                            Preview:{' '}
+                                            <span className="font-medium text-secondary">
+                                                {productForm.length}&quot; × {productForm.width}&quot; × {productForm.height || '6'}&quot;
+                                            </span>
                                         </p>
                                     )}
                                 </div>
@@ -1142,10 +990,12 @@ export default function AdminProductsPage() {
                                     <div className="flex items-start gap-4">
                                         {productForm.image_url ? (
                                             <div className="relative w-24 h-24 rounded-lg overflow-hidden border border-secondary-200">
-                                                <img
+                                                <Image
                                                     src={productForm.image_url}
                                                     alt="Product preview"
-                                                    className="w-full h-full object-cover"
+                                                    fill
+                                                    className="object-cover"
+                                                    sizes="96px"
                                                 />
                                                 <button
                                                     type="button"

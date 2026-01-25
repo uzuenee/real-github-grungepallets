@@ -1,8 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
+import crypto from 'crypto';
+import { enforceMaxContentLength, enforceRateLimit } from '@/lib/security/requestGuards';
 
 export async function POST(request: NextRequest) {
     try {
+        const tooLarge = enforceMaxContentLength(request, 7 * 1024 * 1024);
+        if (tooLarge) return tooLarge;
+
+        const limited = enforceRateLimit({
+            request,
+            keyPrefix: 'admin:upload',
+            limit: 30,
+            windowMs: 60_000,
+        });
+        if ('response' in limited) return limited.response;
+
         const supabase = await createClient();
 
         // Check if user is authenticated and admin
@@ -26,7 +39,8 @@ export async function POST(request: NextRequest) {
         // Get the file from form data
         const formData = await request.formData();
         const file = formData.get('file') as File;
-        const productId = formData.get('productId') as string;
+        const productIdRaw = String(formData.get('productId') || '').trim();
+        const productId = /^[a-zA-Z0-9_-]{1,64}$/.test(productIdRaw) ? productIdRaw : 'temp';
 
         if (!file) {
             return NextResponse.json({ error: 'No file provided' }, { status: 400 });
@@ -44,8 +58,15 @@ export async function POST(request: NextRequest) {
         }
 
         // Generate a unique filename
-        const ext = file.name.split('.').pop() || 'jpg';
-        const filename = `${productId || 'temp'}-${Date.now()}.${ext}`;
+        const contentTypeToExt: Record<string, string> = {
+            'image/jpeg': 'jpg',
+            'image/jpg': 'jpg',
+            'image/png': 'png',
+            'image/webp': 'webp',
+            'image/gif': 'gif',
+        };
+        const ext = contentTypeToExt[file.type] || 'bin';
+        const filename = `${productId}-${crypto.randomUUID()}.${ext}`;
 
         // Convert file to buffer
         const arrayBuffer = await file.arrayBuffer();

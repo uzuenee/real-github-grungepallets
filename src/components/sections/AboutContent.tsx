@@ -1,4 +1,5 @@
 
+import Image from 'next/image';
 
 const milestones = [
     {
@@ -58,10 +59,12 @@ export function AboutContent() {
                     {/* Company Image */}
                     <div className="relative">
                         <div className="aspect-[4/3] rounded-2xl overflow-hidden shadow-xl">
-                            <img
+                            <Image
                                 src="/About_company_team.png"
                                 alt="Grunge Pallets team at our warehouse facility"
-                                className="w-full h-full object-cover"
+                                fill
+                                sizes="(min-width: 1024px) 50vw, 100vw"
+                                className="object-cover"
                             />
                         </div>
                         {/* Decorative accent */}

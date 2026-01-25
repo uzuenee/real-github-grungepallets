@@ -5,6 +5,7 @@ const nextConfig = {
         // your project has ESLint errors. We've verified TypeScript compiles correctly.
         ignoreDuringBuilds: true,
     },
+    // Keep experimental features off for predictable production builds.
     typescript: {
         // The TypeScript compiler passes, this is just for redundancy
         ignoreBuildErrors: false,

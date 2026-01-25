@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { WHOLESALE_PRODUCTS } from '@/lib/wholesale-products';
 
 export async function GET() {
     try {
@@ -29,7 +28,15 @@ export async function GET() {
 
         return NextResponse.json({ categories, source: 'database' });
     } catch (error) {
-        console.error('Categories API error:', error);
+        const isDynamicServerUsageError =
+            typeof error === 'object' &&
+            error !== null &&
+            'digest' in error &&
+            (error as { digest?: unknown }).digest === 'DYNAMIC_SERVER_USAGE';
+
+        if (!isDynamicServerUsageError) {
+            console.error('Categories API error:', error);
+        }
         return NextResponse.json(
             { error: 'Failed to fetch categories' },
             { status: 500 }

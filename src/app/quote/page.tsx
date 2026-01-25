@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import { Suspense } from 'react';
 import { MainLayout } from '@/components/layout';
 import { PageHero } from '@/components/sections';
 import { QuoteForm } from '@/components/forms';
@@ -27,7 +28,9 @@ export default function QuotePage() {
 
             <section className="py-16 bg-light">
                 <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <QuoteForm />
+                    <Suspense fallback={null}>
+                        <QuoteForm />
+                    </Suspense>
                 </div>
             </section>
         </MainLayout>

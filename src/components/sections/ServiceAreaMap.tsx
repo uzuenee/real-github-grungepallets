@@ -1,5 +1,3 @@
-import { MapPin } from 'lucide-react';
-
 const serviceAreas = [
     'Atlanta',
     'Marietta',

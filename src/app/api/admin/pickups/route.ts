@@ -49,7 +49,15 @@ export async function GET() {
 
         return NextResponse.json({ pickups: pickupsWithProfiles });
     } catch (error) {
-        console.error('Admin pickups API error:', error);
+        const isDynamicServerUsageError =
+            typeof error === 'object' &&
+            error !== null &&
+            'digest' in error &&
+            (error as { digest?: unknown }).digest === 'DYNAMIC_SERVER_USAGE';
+
+        if (!isDynamicServerUsageError) {
+            console.error('Admin pickups API error:', error);
+        }
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }

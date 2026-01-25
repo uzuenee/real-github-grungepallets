@@ -66,7 +66,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Listen for auth changes (including from other tabs)
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             async (event, session) => {
-                console.log('[AuthContext] Auth state changed:', event);
+                if (process.env.NODE_ENV !== 'production') {
+                    console.log('[AuthContext] Auth state changed:', event);
+                }
 
                 // Handle sign out - redirect immediately to login
                 if (event === 'SIGNED_OUT') {

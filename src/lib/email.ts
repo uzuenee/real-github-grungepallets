@@ -1,5 +1,6 @@
-import { Resend } from 'resend';
+﻿import { Resend } from 'resend';
 import { createClient } from '@/lib/supabase/server';
+import { escapeHtml } from '@/lib/security/escapeHtml';
 
 // Lazy initialization to avoid build-time errors
 let resendClient: Resend | null = null;
@@ -19,6 +20,101 @@ const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'Grunge Pallets <onboarding@
 interface EmailResult {
     success: boolean;
     error?: string;
+}
+
+function sanitizeEmailHeader(value: string): string {
+    return value.replace(/[\r\n]+/g, ' ').trim();
+}
+
+function safeHtml(value: unknown): string {
+    return escapeHtml(String(value ?? ''));
+}
+
+function estimateBase64DecodedBytes(base64: string): number {
+    const sanitized = base64.trim().replace(/\s+/g, '');
+    if (!sanitized) return 0;
+
+    const padding = sanitized.endsWith('==') ? 2 : sanitized.endsWith('=') ? 1 : 0;
+    return Math.floor((sanitized.length * 3) / 4) - padding;
+}
+
+function formatMoney(value: number): string {
+    try {
+        return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
+    } catch {
+        return `$${value.toFixed(2)}`;
+    }
+}
+
+function formatShortDate(value: string): string {
+    try {
+        return new Date(value).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    } catch {
+        return value;
+    }
+}
+
+function renderOrderPricingTable({
+    items,
+    orderTotal,
+    deliveryPrice,
+}: {
+    items: Array<{ product_name: string; quantity: number; unit_price: number }>;
+    orderTotal?: number;
+    deliveryPrice?: number | null;
+}): { subtotal: number; html: string } {
+    const subtotal = items.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
+
+    let effectiveDeliveryPrice: number | null | undefined = deliveryPrice;
+    if (effectiveDeliveryPrice === undefined && typeof orderTotal === 'number') {
+        const derived = orderTotal - subtotal;
+        effectiveDeliveryPrice = Number.isFinite(derived) ? derived : undefined;
+    }
+
+    const rows = items.map((item) => `
+        <tr>
+            <td>${safeHtml(item.product_name)}</td>
+            <td style="text-align: center;">${item.quantity}</td>
+            <td style="text-align: right;">${formatMoney(item.unit_price)}</td>
+            <td style="text-align: right;">${formatMoney(item.quantity * item.unit_price)}</td>
+        </tr>
+    `).join('');
+
+    const html = `
+        <table>
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th style="text-align: center;">Qty</th>
+                    <th style="text-align: right;">Unit</th>
+                    <th style="text-align: right;">Line Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${rows}
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="3" style="text-align: right; font-weight: 600;">Subtotal:</td>
+                    <td style="text-align: right; font-weight: 600;">${formatMoney(subtotal)}</td>
+                </tr>
+                ${effectiveDeliveryPrice != null ? `
+                <tr>
+                    <td colspan="3" style="text-align: right; font-weight: 600;">Delivery:</td>
+                    <td style="text-align: right; font-weight: 600;">${formatMoney(effectiveDeliveryPrice)}</td>
+                </tr>
+                ` : ''}
+                ${typeof orderTotal === 'number' ? `
+                <tr>
+                    <td colspan="3" style="text-align: right; font-weight: 700;">Total:</td>
+                    <td style="text-align: right; font-weight: 700;">${formatMoney(orderTotal)}</td>
+                </tr>
+                ` : ''}
+            </tfoot>
+        </table>
+    `;
+
+    return { subtotal, html };
 }
 
 interface NotificationPreferences {
@@ -76,6 +172,10 @@ async function sendEmail({
     }
 
     try {
+        const safeTo = sanitizeEmailHeader(to);
+        const safeSubject = sanitizeEmailHeader(subject);
+        const safeFrom = sanitizeEmailHeader(FROM_EMAIL);
+
         const emailOptions: {
             from: string;
             to: string;
@@ -83,16 +183,23 @@ async function sendEmail({
             html: string;
             attachments?: { filename: string; content: Buffer }[];
         } = {
-            from: FROM_EMAIL,
-            to,
-            subject,
+            from: safeFrom,
+            to: safeTo,
+            subject: safeSubject,
             html,
         };
 
         // Add attachments if present
         if (attachments.length > 0) {
-            emailOptions.attachments = attachments.map((att, i) => ({
-                filename: att.filename || `photo_${i + 1}.jpg`,
+            const MAX_ATTACHMENTS = 3;
+            const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
+
+            const safeAttachments = attachments
+                .slice(0, MAX_ATTACHMENTS)
+                .filter((att) => estimateBase64DecodedBytes(att.content) <= MAX_ATTACHMENT_BYTES);
+
+            emailOptions.attachments = safeAttachments.map((att, i) => ({
+                filename: sanitizeEmailHeader(att.filename || `photo_${i + 1}.jpg`),
                 content: Buffer.from(att.content, 'base64'),
             }));
         }
@@ -104,7 +211,9 @@ async function sendEmail({
             return { success: false, error: error.message };
         }
 
-        console.log(`[Email] Sent to ${to}: ${subject}`);
+        if (process.env.NODE_ENV !== 'production') {
+            console.log(`[Email] Sent to ${safeTo}: ${safeSubject}`);
+        }
         return { success: true };
     } catch (err) {
         console.error('[Email] Unexpected error:', err);
@@ -114,9 +223,7 @@ async function sendEmail({
 
 // Email wrapper with base template
 function wrapInTemplate(content: string): string {
-    // Use Supabase storage URL for the logo (publicly accessible)
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-    const logoUrl = `${supabaseUrl}/storage/v1/object/public/assets/logo.jpg`;
+    const logoUrl = process.env.EMAIL_LOGO_URL || 'https://grungepallets.com/logo.jpg';
 
     return `
 <!DOCTYPE html>
@@ -125,23 +232,59 @@ function wrapInTemplate(content: string): string {
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f5f5f5; }
-        .container { max-width: 600px; margin: 0 auto; background: white; }
-        .header { background: #1a1a2e; padding: 24px; text-align: center; }
-        .header img { max-height: 48px; width: auto; }
+        body {
+            font-family: Outfit, Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #1A1A1A;
+            margin: 0;
+            padding: 0;
+            background-color: #F5F5F5;
+        }
+        .container {
+            max-width: 640px;
+            margin: 24px auto;
+            background: #ffffff;
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid #E0E0E0;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+        }
+        .header {
+            background: #1A1A1A;
+            padding: 22px 24px;
+            text-align: center;
+            border-bottom: 4px solid #FF6600;
+        }
+        .header img { max-height: 44px; width: auto; }
         .content { padding: 32px 24px; }
-        .footer { background: #f8f9fa; padding: 24px; text-align: center; font-size: 14px; color: #666; }
-        .button { display: inline-block; background: #f59e0b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; }
-        .status-badge { display: inline-block; padding: 6px 12px; border-radius: 4px; font-weight: 600; text-transform: capitalize; }
-        .status-pending { background: #fef3c7; color: #92400e; }
-        .status-confirmed { background: #dbeafe; color: #1e40af; }
-        .status-processing { background: #e0e7ff; color: #3730a3; }
-        .status-shipped { background: #d1fae5; color: #065f46; }
-        .status-delivered { background: #d1fae5; color: #065f46; }
-        .status-cancelled { background: #fee2e2; color: #991b1b; }
-        table { width: 100%; border-collapse: collapse; margin: 16px 0; }
-        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e5e7eb; }
-        th { background: #f9fafb; font-weight: 600; }
+        .content h2 { margin: 0 0 12px 0; font-family: Inter, Outfit, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; letter-spacing: 0.2px; }
+        .content h3 { margin: 22px 0 10px 0; font-family: Inter, Outfit, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        .content p { margin: 0 0 14px 0; color: #4D4D4D; }
+        .content a { color: #FF6600; }
+        .footer { background: #F5F5F5; padding: 22px 24px; text-align: center; font-size: 13px; color: #4D4D4D; }
+        .footer p { margin: 6px 0; }
+        .button {
+            display: inline-block;
+            background: #FF6600;
+            color: #ffffff !important;
+            padding: 12px 20px;
+            text-decoration: none;
+            border-radius: 10px;
+            font-weight: 700;
+            border: 1px solid #CC5200;
+            box-shadow: 0 6px 16px rgba(255, 102, 0, 0.25);
+        }
+        .status-badge { display: inline-block; padding: 6px 10px; border-radius: 999px; font-weight: 700; text-transform: capitalize; font-size: 12px; }
+        .status-pending { background: #FFF3EB; color: #993D00; border: 1px solid #FFC299; }
+        .status-confirmed { background: #E0E0E0; color: #1A1A1A; border: 1px solid #B3B3B3; }
+        .status-processing { background: #FFE2CC; color: #662900; border: 1px solid #FFC299; }
+        .status-shipped { background: #E6F4EA; color: #1B5E20; border: 1px solid #B7E1C1; }
+        .status-delivered { background: #E6F4EA; color: #1B5E20; border: 1px solid #B7E1C1; }
+        .status-cancelled { background: #FDE8E8; color: #8A1C1C; border: 1px solid #F5B8B8; }
+        table { width: 100%; border-collapse: collapse; margin: 16px 0; border: 1px solid #E0E0E0; border-radius: 12px; overflow: hidden; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #E0E0E0; }
+        th { background: #FFF3EB; font-weight: 700; color: #1A1A1A; }
+        tfoot td { border-bottom: none; }
     </style>
 </head>
 <body>
@@ -164,7 +307,7 @@ function wrapInTemplate(content: string): string {
 
 // Order confirmation email to customer
 export async function sendOrderConfirmation({
-    userId,
+    userId: _userId,
     customerEmail,
     customerName,
     orderId,
@@ -179,53 +322,31 @@ export async function sendOrderConfirmation({
     items: Array<{ product_name: string; quantity: number; unit_price: number }>;
 }): Promise<EmailResult> {
     // Order confirmations are mandatory - no preference check needed
+    void _userId;
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 
-    const itemsHtml = items.map(item => `
-        <tr>
-            <td>${item.product_name}</td>
-            <td style="text-align: center;">${item.quantity}</td>
-            <td style="text-align: right;">$${item.unit_price.toFixed(2)}</td>
-        </tr>
-    `).join('');
+    const { html: pricingTableHtml } = renderOrderPricingTable({ items, orderTotal });
 
     const html = wrapInTemplate(`
-        <h2>Order Confirmed!</h2>
-        <p>Hi ${customerName},</p>
-        <p>Thank you for your order. We've received it and will begin processing shortly.</p>
+        <h2>Order Received</h2>
+        <p>Hi ${safeHtml(customerName)},</p>
+        <p>Thanks for your order. We&apos;ve received it and will review it shortly.</p>
         
         <p><strong>Order #:</strong> ${orderId.slice(0, 8).toUpperCase()}</p>
         
-        <table>
-            <thead>
-                <tr>
-                    <th>Product</th>
-                    <th style="text-align: center;">Qty</th>
-                    <th style="text-align: right;">Price</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${itemsHtml}
-            </tbody>
-            <tfoot>
-                <tr>
-                    <td colspan="2" style="text-align: right; font-weight: 600;">Total:</td>
-                    <td style="text-align: right; font-weight: 600;">$${orderTotal.toFixed(2)}</td>
-                </tr>
-            </tfoot>
-        </table>
+        ${pricingTableHtml}
         
         <p style="text-align: center; margin-top: 32px;">
             <a href="${siteUrl}/portal/orders/${orderId}" class="button">View Order Details</a>
         </p>
         
-        <p style="margin-top: 32px;">If you have any questions, reply to this email or call us at (404) 555-7255.</p>
+        <p style="margin-top: 32px;">If you have any questions, reply to this email or call us at (770) 934-8248.</p>
     `);
 
     return sendEmail({
         to: customerEmail,
-        subject: `Order Confirmed - #${orderId.slice(0, 8).toUpperCase()}`,
+        subject: `Order Received - #${orderId.slice(0, 8).toUpperCase()}`,
         html,
     });
 }
@@ -240,6 +361,7 @@ export async function sendOrderStatusUpdate({
     deliveryDate,
     items,
     orderTotal,
+    deliveryPrice,
 }: {
     userId: string;
     customerEmail: string;
@@ -249,6 +371,7 @@ export async function sendOrderStatusUpdate({
     deliveryDate?: string;
     items?: Array<{ product_name: string; quantity: number; unit_price: number }>;
     orderTotal?: number;
+    deliveryPrice?: number | null;
 }): Promise<EmailResult> {
     // Check user preferences - shipping_updates covers status changes
     const prefs = await getUserNotificationPreferences(userId);
@@ -258,11 +381,15 @@ export async function sendOrderStatusUpdate({
     const isShippingUpdate = ['shipped', 'processing', 'confirmed'].includes(newStatus);
 
     if (isDeliveryNotification && !prefs.delivery_notifications) {
-        console.log(`[Email] User ${userId} has delivery_notifications disabled, skipping`);
+        if (process.env.NODE_ENV !== 'production') {
+            console.log(`[Email] User ${userId} has delivery_notifications disabled, skipping`);
+        }
         return { success: true };
     }
     if (isShippingUpdate && !prefs.shipping_updates) {
-        console.log(`[Email] User ${userId} has shipping_updates disabled, skipping`);
+        if (process.env.NODE_ENV !== 'production') {
+            console.log(`[Email] User ${userId} has shipping_updates disabled, skipping`);
+        }
         return { success: true };
     }
 
@@ -277,45 +404,22 @@ export async function sendOrderStatusUpdate({
     };
 
     const message = statusMessages[newStatus] || `Your order status has been updated to: ${newStatus}`;
+    const safeStatusClass = /^[a-z-]+$/.test(newStatus) ? newStatus : 'unknown';
+    const safeStatusLabel = safeHtml(newStatus.charAt(0).toUpperCase() + newStatus.slice(1));
 
     // Build items table if items are provided
-    const itemsHtml = items && items.length > 0 ? `
-        <table>
-            <thead>
-                <tr>
-                    <th>Product</th>
-                    <th style="text-align: center;">Qty</th>
-                    <th style="text-align: right;">Price</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${items.map(item => `
-                    <tr>
-                        <td>${item.product_name}</td>
-                        <td style="text-align: center;">${item.quantity}</td>
-                        <td style="text-align: right;">$${item.unit_price.toFixed(2)}</td>
-                    </tr>
-                `).join('')}
-            </tbody>
-            ${orderTotal ? `
-            <tfoot>
-                <tr>
-                    <td colspan="2" style="text-align: right; font-weight: 600;">Total:</td>
-                    <td style="text-align: right; font-weight: 600;">$${orderTotal.toFixed(2)}</td>
-                </tr>
-            </tfoot>
-            ` : ''}
-        </table>
-    ` : '';
+    const itemsHtml = items && items.length > 0
+        ? renderOrderPricingTable({ items, orderTotal, deliveryPrice }).html
+        : '';
 
     const html = wrapInTemplate(`
         <h2>Order Status Changed</h2>
-        <p>Hi ${customerName},</p>
-        <p>${message}</p>
+        <p>Hi ${safeHtml(customerName)},</p>
+        <p>${safeHtml(message)}</p>
         
         <p><strong>Order #:</strong> ${orderId.slice(0, 8).toUpperCase()}</p>
-        <p><strong>New Status:</strong> <span class="status-badge status-${newStatus}">${newStatus.charAt(0).toUpperCase() + newStatus.slice(1)}</span></p>
-        ${deliveryDate ? `<p><strong>Delivery Date:</strong> ${new Date(deliveryDate).toLocaleDateString()}</p>` : ''}
+        <p><strong>New Status:</strong> <span class="status-badge status-${safeStatusClass}">${safeStatusLabel}</span></p>
+        ${deliveryDate ? `<p><strong>Delivery Date:</strong> ${formatShortDate(deliveryDate)}</p>` : ''}
         
         ${itemsHtml}
         
@@ -326,7 +430,64 @@ export async function sendOrderStatusUpdate({
 
     return sendEmail({
         to: customerEmail,
-        subject: `Order Status Changed - #${orderId.slice(0, 8).toUpperCase()}`,
+        subject: `Order Update: ${newStatus.charAt(0).toUpperCase() + newStatus.slice(1)} - #${orderId.slice(0, 8).toUpperCase()}`,
+        html,
+    });
+}
+
+export async function sendOrderDetailsUpdated({
+    userId: _userId,
+    customerEmail,
+    customerName,
+    orderId,
+    updates,
+    deliveryDate,
+    items,
+    orderTotal,
+    deliveryPrice,
+}: {
+    userId: string;
+    customerEmail: string;
+    customerName: string;
+    orderId: string;
+    updates: string[];
+    deliveryDate?: string;
+    items?: Array<{ product_name: string; quantity: number; unit_price: number }>;
+    orderTotal?: number;
+    deliveryPrice?: number | null;
+}): Promise<EmailResult> {
+    // Pricing / schedule updates are important - do not gate on preferences.
+    void _userId;
+
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+
+    const updatesHtml = updates.length > 0
+        ? `<ul style="padding-left: 20px; margin: 12px 0;">${updates.map(u => `<li style="margin: 6px 0;">${u}</li>`).join('')}</ul>`
+        : '';
+
+    const itemsHtml = items && items.length > 0
+        ? renderOrderPricingTable({ items, orderTotal, deliveryPrice }).html
+        : '';
+
+    const html = wrapInTemplate(`
+        <h2>Order Updated</h2>
+        <p>Hi ${safeHtml(customerName)},</p>
+        <p>We&apos;ve updated your order details:</p>
+        ${updatesHtml}
+
+        <p><strong>Order #:</strong> ${orderId.slice(0, 8).toUpperCase()}</p>
+        ${deliveryDate ? `<p><strong>Delivery Date:</strong> ${formatShortDate(deliveryDate)}</p>` : ''}
+
+        ${itemsHtml}
+
+        <p style="text-align: center; margin-top: 32px;">
+            <a href="${siteUrl}/portal/orders/${orderId}" class="button">View Order Details</a>
+        </p>
+    `);
+
+    return sendEmail({
+        to: customerEmail,
+        subject: `Order Updated - #${orderId.slice(0, 8).toUpperCase()}`,
         html,
     });
 }
@@ -497,17 +658,17 @@ export async function sendAdminContactNotification({
         <h2>New Contact Form Submission</h2>
         
         <table>
-            <tr><td><strong>Name:</strong></td><td>${name}</td></tr>
-            <tr><td><strong>Email:</strong></td><td><a href="mailto:${email}">${email}</a></td></tr>
-            ${company ? `<tr><td><strong>Company:</strong></td><td>${company}</td></tr>` : ''}
-            ${phone ? `<tr><td><strong>Phone:</strong></td><td>${phone}</td></tr>` : ''}
+            <tr><td><strong>Name:</strong></td><td>${safeHtml(name)}</td></tr>
+            <tr><td><strong>Email:</strong></td><td><a href="mailto:${safeHtml(email)}">${safeHtml(email)}</a></td></tr>
+            ${company ? `<tr><td><strong>Company:</strong></td><td>${safeHtml(company)}</td></tr>` : ''}
+            ${phone ? `<tr><td><strong>Phone:</strong></td><td>${safeHtml(phone)}</td></tr>` : ''}
         </table>
         
         <h3>Message:</h3>
-        <p style="background: #f9fafb; padding: 16px; border-radius: 8px; white-space: pre-wrap;">${message}</p>
+        <p style="background: #f9fafb; padding: 16px; border-radius: 8px; white-space: pre-wrap;">${safeHtml(message)}</p>
         
         <p style="margin-top: 24px;">
-            <a href="mailto:${email}" class="button">Reply to ${name}</a>
+            <a href="mailto:${safeHtml(email)}" class="button">Reply to ${safeHtml(name)}</a>
         </p>
     `);
 
@@ -543,11 +704,11 @@ export async function sendAdminQuoteNotification({
 
     const detailsHtml = Object.entries(details)
         .filter(([, value]) => value)
-        .map(([key, value]) => `<tr><td><strong>${key}:</strong></td><td>${value}</td></tr>`)
+        .map(([key, value]) => `<tr><td><strong>${safeHtml(key)}:</strong></td><td>${safeHtml(value)}</td></tr>`)
         .join('');
 
     // Convert base64 data URLs to attachments
-    const attachments: EmailAttachment[] = photos.map((photo, i) => {
+    const attachments: EmailAttachment[] = photos.slice(0, 3).map((photo, i) => {
         // Remove data URL prefix if present (e.g., "data:image/jpeg;base64,")
         const base64Content = photo.includes(',') ? photo.split(',')[1] : photo;
         return {
@@ -572,10 +733,10 @@ export async function sendAdminQuoteNotification({
         
         <h3>Contact Information</h3>
         <table>
-            <tr><td><strong>Name:</strong></td><td>${name}</td></tr>
-            <tr><td><strong>Email:</strong></td><td><a href="mailto:${email}">${email}</a></td></tr>
-            ${company ? `<tr><td><strong>Company:</strong></td><td>${company}</td></tr>` : ''}
-            ${phone ? `<tr><td><strong>Phone:</strong></td><td>${phone}</td></tr>` : ''}
+            <tr><td><strong>Name:</strong></td><td>${safeHtml(name)}</td></tr>
+            <tr><td><strong>Email:</strong></td><td><a href="mailto:${safeHtml(email)}">${safeHtml(email)}</a></td></tr>
+            ${company ? `<tr><td><strong>Company:</strong></td><td>${safeHtml(company)}</td></tr>` : ''}
+            ${phone ? `<tr><td><strong>Phone:</strong></td><td>${safeHtml(phone)}</td></tr>` : ''}
         </table>
         
         <h3>Request Details</h3>
@@ -586,7 +747,7 @@ export async function sendAdminQuoteNotification({
         ${photosHtml}
         
         <p style="margin-top: 24px;">
-            <a href="mailto:${email}" class="button">Reply to ${name}</a>
+            <a href="mailto:${safeHtml(email)}" class="button">Reply to ${safeHtml(name)}</a>
         </p>
     `);
 
@@ -637,15 +798,15 @@ export async function sendPickupConfirmationEmail({
 
     const html = wrapInTemplate(`
         <h2>Pickup Request Received!</h2>
-        <p>Hi ${customerName},</p>
+        <p>Hi ${safeHtml(customerName)},</p>
         <p>We've received your pallet pickup request and will review it shortly.</p>
         
         <h3>Request Details</h3>
         <table>
             <tr><td><strong>Request ID:</strong></td><td>${pickupId.slice(0, 8).toUpperCase()}</td></tr>
-            <tr><td><strong>Pallet Condition:</strong></td><td>${conditionLabels[palletCondition] || palletCondition}</td></tr>
+            <tr><td><strong>Pallet Condition:</strong></td><td>${safeHtml(conditionLabels[palletCondition] || palletCondition)}</td></tr>
             <tr><td><strong>Estimated Quantity:</strong></td><td>${estimatedQuantity} pallets</td></tr>
-            <tr><td><strong>Pickup Address:</strong></td><td>${pickupAddress}</td></tr>
+            <tr><td><strong>Pickup Address:</strong></td><td>${safeHtml(pickupAddress)}</td></tr>
             ${preferredDate ? `<tr><td><strong>Preferred Date:</strong></td><td>${new Date(preferredDate).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</td></tr>` : ''}
         </table>
         
@@ -705,28 +866,28 @@ export async function sendAdminPickupNotification({
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 
     const html = wrapInTemplate(`
-        <h2>🚛 New Pickup Request</h2>
+        <h2>New Pickup Request</h2>
         
         <h3>Customer Information</h3>
         <table>
-            ${companyName ? `<tr><td><strong>Company:</strong></td><td>${companyName}</td></tr>` : ''}
-            <tr><td><strong>Contact:</strong></td><td>${customerName}</td></tr>
-            <tr><td><strong>Email:</strong></td><td><a href="mailto:${customerEmail}">${customerEmail}</a></td></tr>
-            ${customerPhone ? `<tr><td><strong>Phone:</strong></td><td>${customerPhone}</td></tr>` : ''}
+            ${companyName ? `<tr><td><strong>Company:</strong></td><td>${safeHtml(companyName)}</td></tr>` : ''}
+            <tr><td><strong>Contact:</strong></td><td>${safeHtml(customerName)}</td></tr>
+            <tr><td><strong>Email:</strong></td><td><a href="mailto:${safeHtml(customerEmail)}">${safeHtml(customerEmail)}</a></td></tr>
+            ${customerPhone ? `<tr><td><strong>Phone:</strong></td><td>${safeHtml(customerPhone)}</td></tr>` : ''}
         </table>
         
         <h3>Pickup Details</h3>
         <table>
             <tr><td><strong>Request ID:</strong></td><td>${pickupId.slice(0, 8).toUpperCase()}</td></tr>
-            <tr><td><strong>Condition:</strong></td><td>${conditionLabels[palletCondition] || palletCondition}</td></tr>
+            <tr><td><strong>Condition:</strong></td><td>${safeHtml(conditionLabels[palletCondition] || palletCondition)}</td></tr>
             <tr><td><strong>Quantity:</strong></td><td>${estimatedQuantity} pallets</td></tr>
-            <tr><td><strong>Address:</strong></td><td>${pickupAddress}</td></tr>
+            <tr><td><strong>Address:</strong></td><td>${safeHtml(pickupAddress)}</td></tr>
             ${preferredDate ? `<tr><td><strong>Preferred Date:</strong></td><td>${new Date(preferredDate).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</td></tr>` : ''}
         </table>
 
         ${notes ? `
         <h3>Customer Notes</h3>
-        <p style="background: #f5f5f5; padding: 12px; border-radius: 8px; color: #666;">${notes}</p>
+        <p style="background: #f5f5f5; padding: 12px; border-radius: 8px; color: #666;">${safeHtml(notes)}</p>
         ` : ''}
         
         <p style="text-align: center; margin-top: 32px;">

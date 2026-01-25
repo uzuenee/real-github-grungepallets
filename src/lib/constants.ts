@@ -164,6 +164,10 @@ export const COMPANY_INFO: CompanyInfo = {
     city: 'Winston',
     state: 'GA',
     zip: '30187',
+    secondaryAddress: '4694 Aviation Parkway, Suite S',
+    secondaryCity: 'Atlanta',
+    secondaryState: 'GA',
+    secondaryZip: '30349',
     phone: '(770) 934-8248',
     email: 'info@grungepallets.com',
 };

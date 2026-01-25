@@ -1,11 +1,13 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 import { sendAdminNewUserNotification } from '@/lib/email';
+import { safeRedirectPath } from '@/lib/security/safeRedirect';
 
 export async function GET(request: Request) {
     const { searchParams, origin } = new URL(request.url);
     const code = searchParams.get('code');
-    const next = searchParams.get('next') || '/portal';
+    const rawNext = searchParams.get('next') || '/portal';
+    const next = safeRedirectPath(rawNext, '/portal');
 
     if (code) {
         const supabase = await createClient();

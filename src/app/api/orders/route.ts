@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { sendOrderConfirmation, sendAdminNewOrderNotification } from '@/lib/email';
+import { enforceMaxContentLength } from '@/lib/security/requestGuards';
+import { rateLimit } from '@/lib/security/rateLimit';
 
 export async function GET() {
     const supabase = await createClient();
@@ -30,12 +32,12 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-    console.log('[Orders API] POST request received');
-
     let supabase;
     try {
+        const tooLarge = enforceMaxContentLength(request, 128 * 1024);
+        if (tooLarge) return tooLarge;
+
         supabase = await createClient();
-        console.log('[Orders API] Supabase client created');
     } catch (err) {
         console.error('[Orders API] Failed to create Supabase client:', err);
         return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
@@ -43,18 +45,35 @@ export async function POST(request: NextRequest) {
 
     // Get current user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
-    console.log('[Orders API] User:', user?.id, 'Auth error:', authError);
 
     if (authError || !user) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     try {
+        const limited = rateLimit(`orders:create:${user.id}`, { limit: 10, windowMs: 60_000 });
+        if (!limited.allowed) {
+            return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: limited.headers });
+        }
+
         const body = await request.json();
         const { items, total, delivery_notes } = body;
 
         if (!items || !Array.isArray(items) || items.length === 0) {
             return NextResponse.json({ error: 'No items provided' }, { status: 400 });
+        }
+
+        if (items.length > 50) {
+            return NextResponse.json({ error: 'Too many items' }, { status: 400 });
+        }
+
+        if (delivery_notes && String(delivery_notes).length > 2000) {
+            return NextResponse.json({ error: 'Delivery notes too long' }, { status: 400 });
+        }
+
+        const parsedTotal = typeof total === 'number' ? total : Number.parseFloat(String(total));
+        if (!Number.isFinite(parsedTotal) || parsedTotal < 0 || parsedTotal > 10_000_000) {
+            return NextResponse.json({ error: 'Invalid total' }, { status: 400 });
         }
 
         // Create order
@@ -63,7 +82,7 @@ export async function POST(request: NextRequest) {
             .insert({
                 user_id: user.id,
                 status: 'pending',
-                total,
+                total: parsedTotal,
                 delivery_notes: delivery_notes || '',
             })
             .select()
@@ -82,15 +101,37 @@ export async function POST(request: NextRequest) {
             price: number;
             isCustom?: boolean;
             customSpecs?: { length: string; width: string; height?: string; notes?: string };
-        }) => ({
-            order_id: order.id,
-            product_id: item.productId,
-            product_name: item.productName,
-            quantity: item.quantity,
-            unit_price: item.price,
-            is_custom: item.isCustom || false,
-            custom_specs: item.customSpecs ? JSON.stringify(item.customSpecs) : null,
-        }));
+        }) => {
+            const productId = String(item.productId || '').trim();
+            const productName = String(item.productName || '').trim();
+            const quantity = Number(item.quantity);
+            const unitPrice = Number(item.price);
+
+            if (!productId || productId.length > 128) throw new Error('Invalid productId');
+            if (!productName || productName.length > 200) throw new Error('Invalid productName');
+            if (!Number.isInteger(quantity) || quantity < 1 || quantity > 10000) throw new Error('Invalid quantity');
+            if (!Number.isFinite(unitPrice) || unitPrice < 0 || unitPrice > 1_000_000) throw new Error('Invalid price');
+
+            const isCustom = Boolean(item.isCustom);
+            const customSpecs = item.customSpecs
+                ? {
+                    length: String(item.customSpecs.length || '').slice(0, 32),
+                    width: String(item.customSpecs.width || '').slice(0, 32),
+                    height: item.customSpecs.height ? String(item.customSpecs.height).slice(0, 32) : undefined,
+                    notes: item.customSpecs.notes ? String(item.customSpecs.notes).slice(0, 1000) : undefined,
+                }
+                : null;
+
+            return {
+                order_id: order.id,
+                product_id: productId,
+                product_name: productName,
+                quantity,
+                unit_price: unitPrice,
+                is_custom: isCustom,
+                custom_specs: customSpecs ? JSON.stringify(customSpecs) : null,
+            };
+        });
 
         const { error: itemsError } = await supabase
             .from('order_items')
@@ -103,8 +144,6 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: itemsError.message }, { status: 500 });
         }
 
-        console.log('[Orders API] Order created successfully:', order.id);
-
         // Send email notifications (don't block on this)
         // Note: email is NOT in profiles table, it's in auth.users (available via user.email)
         const { data: profile, error: profileError } = await supabase
@@ -113,12 +152,9 @@ export async function POST(request: NextRequest) {
             .eq('id', user.id)
             .single();
 
-        console.log('[Orders API] Profile fetch result:', { profile, profileError, userEmail: user.email });
-
-        if (profile) {
+        if (profile && !profileError) {
             // Use the email from the auth user, not from profiles
             const customerEmail = user.email || '';
-            console.log('[Orders API] Sending order confirmation to:', customerEmail);
 
             // Send order confirmation to customer
             sendOrderConfirmation({
@@ -126,14 +162,12 @@ export async function POST(request: NextRequest) {
                 customerEmail: customerEmail,
                 customerName: profile.contact_name || 'Customer',
                 orderId: order.id,
-                orderTotal: total,
+                orderTotal: parsedTotal,
                 items: orderItems.map(item => ({
                     product_name: item.product_name,
                     quantity: item.quantity,
                     unit_price: item.unit_price,
                 })),
-            }).then(result => {
-                console.log('[Orders API] Order confirmation email result:', result);
             }).catch(err => console.error('[Orders API] Email error:', err));
 
             // Send admin notification
@@ -141,17 +175,15 @@ export async function POST(request: NextRequest) {
                 orderId: order.id,
                 customerName: profile.contact_name || 'Customer',
                 companyName: profile.company_name || 'Unknown',
-                orderTotal: total,
+                orderTotal: parsedTotal,
                 items: orderItems.map(item => ({
                     product_name: item.product_name,
                     quantity: item.quantity,
                     unit_price: item.unit_price,
                 })),
-            }).then(result => {
-                console.log('[Orders API] Admin notification result:', result);
             }).catch(err => console.error('[Orders API] Admin email error:', err));
         } else {
-            console.warn('[Orders API] No profile found, skipping email notifications');
+            console.warn('[Orders API] No profile found, skipping email notifications', { profileError });
         }
 
         return NextResponse.json({ order, success: true });

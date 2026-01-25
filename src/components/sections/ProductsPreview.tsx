@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Package, Loader2 } from 'lucide-react';
 import { Card, Button, Badge } from '@/components/ui';
 
@@ -65,10 +66,12 @@ export function ProductsPreview() {
                                 {/* Product Image */}
                                 <div className="aspect-square bg-secondary-50 flex flex-col items-center justify-center relative">
                                     {product.image_url ? (
-                                        <img
+                                        <Image
                                             src={product.image_url}
                                             alt={product.name}
-                                            className="w-full h-full object-cover"
+                                            fill
+                                            sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
+                                            className="object-cover"
                                         />
                                     ) : (
                                         <>

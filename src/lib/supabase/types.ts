@@ -4,6 +4,7 @@ export type PalletCondition = 'grade-a' | 'grade-b' | 'mixed' | 'damaged';
 
 export interface Profile {
     id: string;
+    email?: string | null;
     company_name: string;
     contact_name: string;
     phone: string;
@@ -14,6 +15,7 @@ export interface Profile {
     is_admin: boolean;
     approved: boolean;
     created_at?: string;
+    updated_at?: string;
 }
 
 export interface Category {
@@ -84,6 +86,7 @@ export interface Pickup {
     notes?: string;
     admin_notes?: string;
     price_per_pallet?: number;
+    pickup_charge?: number | null;
     total_payout?: number;
     created_at: string;
     updated_at?: string;

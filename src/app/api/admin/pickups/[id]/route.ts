@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient, createClient } from '@/lib/supabase/server';
 
 // GET - Get single pickup with user profile (admin only)
 export async function GET(
@@ -44,14 +44,21 @@ export async function GET(
             .eq('id', pickup.user_id)
             .single();
 
-        // Get user email from auth.users via the user_id
-        const { data: userData } = await supabase.auth.admin.getUserById(pickup.user_id);
+        // Get user email from auth.users via the user_id (requires service role key)
+        let userEmail: string | null = null;
+        try {
+            const adminSupabase = createAdminClient();
+            const { data } = await adminSupabase.auth.admin.getUserById(pickup.user_id);
+            userEmail = data.user?.email ?? null;
+        } catch (err) {
+            console.error('Failed to fetch user email via admin API:', err);
+        }
 
         const pickupWithProfile = {
             ...pickup,
             profiles: customerProfile ? {
                 ...customerProfile,
-                email: userData?.user?.email || null
+                email: userEmail
             } : null
         };
 
@@ -95,6 +102,7 @@ export async function PATCH(
         if (body.scheduled_date !== undefined) updates.scheduled_date = body.scheduled_date || null;
         if (body.actual_quantity !== undefined) updates.actual_quantity = body.actual_quantity;
         if (body.price_per_pallet !== undefined) updates.price_per_pallet = body.price_per_pallet;
+        if (body.pickup_charge !== undefined) updates.pickup_charge = body.pickup_charge;
         if (body.total_payout !== undefined) updates.total_payout = body.total_payout;
         if (body.admin_notes !== undefined) updates.admin_notes = body.admin_notes;
 

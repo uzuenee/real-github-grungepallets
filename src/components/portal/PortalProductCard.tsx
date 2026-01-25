@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { Package, ShoppingCart, Check } from 'lucide-react';
 import { Badge, Button } from '@/components/ui';
 import { useCart, CustomSpecs } from '@/lib/contexts/CartContext';
@@ -128,10 +129,12 @@ export function PortalProductCard({ product }: PortalProductCardProps) {
             {/* Product Image */}
             <div className="aspect-[4/3] bg-secondary-50 flex flex-col items-center justify-center relative overflow-hidden">
                 {product.imageUrl ? (
-                    <img
+                    <Image
                         src={product.imageUrl}
                         alt={product.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        fill
+                        sizes="(min-width: 1280px) 25vw, (min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
+                        className="object-cover group-hover:scale-105 transition-transform duration-300"
                     />
                 ) : (
                     <>

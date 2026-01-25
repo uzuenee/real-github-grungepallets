@@ -305,18 +305,6 @@ describe('Admin Panel Integration Tests', () => {
     });
 
     describe('Category Management', () => {
-        interface Category {
-            id: string;
-            label: string;
-            is_active: boolean;
-        }
-
-        const mockCategories: Category[] = [
-            { id: 'grade-a', label: 'Grade A', is_active: true },
-            { id: 'grade-b', label: 'Grade B', is_active: true },
-            { id: 'custom', label: 'Custom', is_active: true },
-        ];
-
         function getCategoryProductCount(categoryId: string, products: Array<{ category_id: string }>): number {
             return products.filter(p => p.category_id === categoryId).length;
         }
@@ -348,13 +336,6 @@ describe('Admin Panel Integration Tests', () => {
     });
 
     describe('User Management', () => {
-        interface User {
-            id: string;
-            company_name: string;
-            is_admin: boolean;
-            approved: boolean;
-        }
-
         const currentAdminId = 'admin-123';
 
         function canModifyUser(currentUserId: string, targetUserId: string): boolean {

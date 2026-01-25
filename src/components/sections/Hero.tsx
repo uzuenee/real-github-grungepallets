@@ -1,23 +1,20 @@
-'use client';
-
+import Link from 'next/link';
+import Image from 'next/image';
 import { Button } from '@/components/ui';
 
 export function Hero() {
-    const scrollToSection = (id: string) => {
-        const element = document.getElementById(id);
-        if (element) {
-            element.scrollIntoView({ behavior: 'smooth' });
-        }
-    };
-
     return (
         <section className="relative min-h-[calc(100vh-5rem)] flex items-center justify-center overflow-hidden">
             {/* Background Image */}
-            <div
-                className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-                style={{ backgroundImage: "url('/Hero page.png')" }}
-                aria-hidden="true"
-            >
+            <div className="absolute inset-0" aria-hidden="true">
+                <Image
+                    src="/Hero page.png"
+                    alt=""
+                    fill
+                    priority
+                    sizes="100vw"
+                    className="object-cover"
+                />
                 {/* Dark overlay for text readability */}
                 <div className="absolute inset-0 bg-gradient-to-br from-secondary/90 via-secondary/80 to-secondary/70" />
                 {/* Decorative elements */}
@@ -46,20 +43,16 @@ export function Hero() {
 
                 {/* CTA Buttons */}
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                    <Button
-                        variant="primary"
-                        size="lg"
-                        onClick={() => scrollToSection('products')}
-                    >
-                        I Need to Buy Pallets
-                    </Button>
-                    <Button
-                        variant="outline-white"
-                        size="lg"
-                        onClick={() => scrollToSection('services')}
-                    >
-                        I Need Pallets Removed
-                    </Button>
+                    <Link href="/quote?type=buy">
+                        <Button variant="primary" size="lg">
+                            I Need to Buy Pallets
+                        </Button>
+                    </Link>
+                    <Link href="/quote?type=sell">
+                        <Button variant="outline-white" size="lg">
+                            I Need Pallets Removed
+                        </Button>
+                    </Link>
                 </div>
 
                 {/* Trust indicators */}

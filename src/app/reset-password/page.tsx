@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { AuthLayout } from '@/components/layout';
 import { Input, Button } from '@/components/ui';
@@ -24,11 +25,70 @@ export default function ResetPasswordPage() {
     useEffect(() => {
         const checkSession = async () => {
             const supabase = createClient();
+            const recoveryFlagKey = 'gp_password_recovery_ok';
+
+            // Handle both Supabase reset link formats:
+            // - PKCE: `?code=...`
+            // - Implicit: `#access_token=...&refresh_token=...&type=recovery`
+            try {
+                const url = new URL(window.location.href);
+                const code = url.searchParams.get('code');
+                const recoveryHint = url.searchParams.get('recovery') === '1';
+
+                if (recoveryHint) {
+                    sessionStorage.setItem(recoveryFlagKey, '1');
+                    url.searchParams.delete('recovery');
+                    window.history.replaceState({}, '', url.toString());
+                }
+
+                if (code) {
+                    const { error } = await supabase.auth.exchangeCodeForSession(code);
+                    if (error) {
+                        router.replace('/forgot-password?error=link_expired');
+                        return;
+                    }
+                    sessionStorage.setItem(recoveryFlagKey, '1');
+                    url.searchParams.delete('code');
+                    window.history.replaceState({}, '', url.toString());
+                }
+
+                const hash = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : window.location.hash;
+                if (hash) {
+                    const hashParams = new URLSearchParams(hash);
+                    const accessToken = hashParams.get('access_token');
+                    const refreshToken = hashParams.get('refresh_token');
+                    const type = hashParams.get('type');
+
+                    if (accessToken && refreshToken && type === 'recovery') {
+                        const { error } = await supabase.auth.setSession({
+                            access_token: accessToken,
+                            refresh_token: refreshToken,
+                        });
+                        if (error) {
+                            router.replace('/forgot-password?error=link_expired');
+                            return;
+                        }
+                        sessionStorage.setItem(recoveryFlagKey, '1');
+                        window.history.replaceState({}, '', window.location.pathname);
+                    }
+                }
+            } catch {
+                // Ignore URL parsing issues and fall back to session check.
+            }
+
             const { data: { session } } = await supabase.auth.getSession();
 
             if (!session) {
                 // No session - redirect to forgot-password
                 router.replace('/forgot-password?error=no_session');
+                return;
+            }
+
+            const hasRecoveryFlag = sessionStorage.getItem(recoveryFlagKey) === '1';
+            if (!hasRecoveryFlag) {
+                // User is signed in, but did not come from a recovery link.
+                // Use the in-app password change flow instead of the recovery page.
+                router.replace('/portal/settings');
                 return;
             }
 
@@ -88,6 +148,11 @@ export default function ResetPasswordPage() {
         }
 
         setIsSubmitted(true);
+        try {
+            sessionStorage.removeItem('gp_password_recovery_ok');
+        } catch {
+            // ignore
+        }
         setIsSubmitting(false);
     };
 
@@ -118,7 +183,7 @@ export default function ResetPasswordPage() {
                 {/* Logo */}
                 <div className="text-center mb-8">
                     <Link href="/" className="inline-block">
-                        <img src="/logo.jpg" alt="Grunge Pallets" className="h-12 w-auto mx-auto" />
+                        <Image src="/logo.jpg" alt="Grunge Pallets" width={160} height={48} className="h-12 w-auto mx-auto" />
                     </Link>
                     <p className="text-secondary-400 mt-2">Create a new password</p>
                 </div>

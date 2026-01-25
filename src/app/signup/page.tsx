@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { AuthLayout } from '@/components/layout';
 import { Input, Button } from '@/components/ui';
 import { useAuth } from '@/lib/contexts/AuthContext';
@@ -51,6 +52,8 @@ export default function SignupPage() {
         if (!formData.contactName) newErrors.contactName = 'Contact name is required';
         if (!formData.email) newErrors.email = 'Email is required';
         else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = 'Invalid email';
+        if (!formData.phone) newErrors.phone = 'Phone number is required';
+        else if (formData.phone.replace(/\D/g, '').length < 10) newErrors.phone = 'Please enter a valid phone number';
         if (!formData.password) newErrors.password = 'Password is required';
         else if (formData.password.length < 8) newErrors.password = 'Password must be at least 8 characters';
         if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = 'Passwords do not match';
@@ -100,8 +103,8 @@ export default function SignupPage() {
 
     if (isSubmitted) {
         return (
-            <AuthLayout>
-                <div className="bg-white rounded-2xl shadow-2xl p-8 text-center max-w-md">
+            <AuthLayout maxWidth="xl">
+                <div className="bg-white rounded-2xl shadow-2xl p-8 text-center">
                     <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 text-blue-600 mb-6">
                         <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -134,12 +137,12 @@ export default function SignupPage() {
     }
 
     return (
-        <AuthLayout>
+        <AuthLayout maxWidth="xl">
             <div className="bg-white rounded-2xl shadow-2xl p-8">
                 {/* Logo */}
                 <div className="text-center mb-8">
                     <Link href="/" className="inline-block">
-                        <img src="/logo.jpg" alt="Grunge Pallets" className="h-12 w-auto mx-auto" />
+                        <Image src="/logo.jpg" alt="Grunge Pallets" width={160} height={48} className="h-12 w-auto mx-auto" />
                     </Link>
                     <p className="text-secondary-400 mt-2">Request a client account</p>
                 </div>
@@ -171,25 +174,25 @@ export default function SignupPage() {
                         placeholder="John Smith"
                     />
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <Input
-                            label="Email *"
-                            name="email"
-                            type="email"
-                            value={formData.email}
-                            onChange={handleChange}
-                            error={errors.email}
-                            placeholder="you@company.com"
-                        />
-                        <Input
-                            label="Phone"
-                            name="phone"
-                            type="tel"
-                            value={formData.phone}
-                            onChange={handleChange}
-                            placeholder="(404) 555-1234"
-                        />
-                    </div>
+                    <Input
+                        label="Email *"
+                        name="email"
+                        type="email"
+                        value={formData.email}
+                        onChange={handleChange}
+                        error={errors.email}
+                        placeholder="you@company.com"
+                    />
+
+                    <Input
+                        label="Phone *"
+                        name="phone"
+                        type="tel"
+                        value={formData.phone}
+                        onChange={handleChange}
+                        error={errors.phone}
+                        placeholder="(404) 555-1234"
+                    />
 
                     <Input
                         label="Address"
@@ -199,28 +202,34 @@ export default function SignupPage() {
                         placeholder="123 Business St"
                     />
 
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                        <Input
-                            label="City"
-                            name="city"
-                            value={formData.city}
-                            onChange={handleChange}
-                            placeholder="Atlanta"
-                        />
-                        <Input
-                            label="State"
-                            name="state"
-                            value={formData.state}
-                            onChange={handleChange}
-                            placeholder="GA"
-                        />
-                        <Input
-                            label="ZIP"
-                            name="zip"
-                            value={formData.zip}
-                            onChange={handleChange}
-                            placeholder="30318"
-                        />
+                    <div className="grid grid-cols-1 sm:grid-cols-6 gap-4">
+                        <div className="sm:col-span-3">
+                            <Input
+                                label="City"
+                                name="city"
+                                value={formData.city}
+                                onChange={handleChange}
+                                placeholder="Atlanta"
+                            />
+                        </div>
+                        <div className="sm:col-span-1">
+                            <Input
+                                label="State"
+                                name="state"
+                                value={formData.state}
+                                onChange={handleChange}
+                                placeholder="GA"
+                            />
+                        </div>
+                        <div className="sm:col-span-2">
+                            <Input
+                                label="ZIP"
+                                name="zip"
+                                value={formData.zip}
+                                onChange={handleChange}
+                                placeholder="30318"
+                            />
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

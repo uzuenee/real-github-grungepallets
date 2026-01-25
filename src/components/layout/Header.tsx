@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { NAV_LINKS } from '@/lib/constants';
@@ -55,7 +56,14 @@ export function Header() {
                     <div className="flex items-center justify-between h-20">
                         {/* Logo */}
                         <Link href="/" className="flex items-center">
-                            <img src="/logo.jpg" alt="Grunge Pallets" className="h-12 w-auto" />
+                            <Image
+                                src="/logo.jpg"
+                                alt="Grunge Pallets"
+                                width={160}
+                                height={48}
+                                priority
+                                className="h-12 w-auto"
+                            />
                         </Link>
 
                         {/* Desktop Navigation */}
@@ -119,7 +127,13 @@ export function Header() {
                 <div className="flex flex-col h-full">
                     {/* Drawer Header */}
                     <div className="flex items-center justify-between p-4 border-b border-secondary-100">
-                        <img src="/logo.jpg" alt="Grunge Pallets" className="h-10 w-auto" />
+                        <Image
+                            src="/logo.jpg"
+                            alt="Grunge Pallets"
+                            width={140}
+                            height={40}
+                            className="h-10 w-auto"
+                        />
                         <button
                             onClick={() => setIsMobileMenuOpen(false)}
                             className="p-2 text-secondary-500 hover:text-primary transition-colors"

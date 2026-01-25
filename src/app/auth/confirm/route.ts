@@ -1,12 +1,13 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 import type { EmailOtpType } from '@supabase/supabase-js';
+import { safeRedirectPath } from '@/lib/security/safeRedirect';
 
 export async function GET(request: Request) {
     const { searchParams, origin } = new URL(request.url);
     const token_hash = searchParams.get('token_hash');
     const type = searchParams.get('type') as EmailOtpType | null;
-    const next = searchParams.get('next') ?? '/';
+    const next = safeRedirectPath(searchParams.get('next') ?? '/', '/');
 
     if (token_hash && type) {
         const supabase = await createClient();
@@ -19,7 +20,7 @@ export async function GET(request: Request) {
         if (!error) {
             // For password recovery, redirect to reset password page
             if (type === 'recovery') {
-                return NextResponse.redirect(`${origin}/reset-password`);
+                return NextResponse.redirect(`${origin}/reset-password?recovery=1`);
             }
             // For email confirmation, redirect to the next page or portal
             return NextResponse.redirect(`${origin}${next}`);

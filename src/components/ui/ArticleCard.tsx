@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { Clock, ArrowRight, BookOpen, Leaf, Lightbulb } from 'lucide-react';
 import { Badge } from '@/components/ui';
 
@@ -35,10 +36,13 @@ export function ArticleCard({ article, featured = false }: ArticleCardProps) {
                     {/* Featured Image Area */}
                     <div className="h-64 relative overflow-hidden">
                         {article.image ? (
-                            <img
+                            <Image
                                 src={article.image}
                                 alt={article.title}
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                fill
+                                priority
+                                sizes="(min-width: 1024px) 896px, 100vw"
+                                className="object-cover group-hover:scale-105 transition-transform duration-300"
                             />
                         ) : (
                             <div className={`w-full h-full bg-gradient-to-br ${config.bg} flex items-center justify-center`}>
@@ -85,10 +89,12 @@ export function ArticleCard({ article, featured = false }: ArticleCardProps) {
                 {/* Article Image */}
                 <div className="aspect-video relative overflow-hidden">
                     {article.image ? (
-                        <img
+                        <Image
                             src={article.image}
                             alt={article.title}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            fill
+                            sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
+                            className="object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                     ) : (
                         <div className={`w-full h-full bg-gradient-to-br ${config.bg} flex items-center justify-center`}>

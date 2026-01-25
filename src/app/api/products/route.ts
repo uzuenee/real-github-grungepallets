@@ -51,7 +51,15 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json({ products, source: 'database' });
     } catch (error) {
-        console.error('Products API error:', error);
+        const isDynamicServerUsageError =
+            typeof error === 'object' &&
+            error !== null &&
+            'digest' in error &&
+            (error as { digest?: unknown }).digest === 'DYNAMIC_SERVER_USAGE';
+
+        if (!isDynamicServerUsageError) {
+            console.error('Products API error:', error);
+        }
         return NextResponse.json(
             { error: 'Failed to fetch products' },
             { status: 500 }

@@ -59,12 +59,13 @@ function OrderDetailContent() {
 
     const getStatusColor = (status: string) => {
         switch (status) {
-            case 'pending': return 'warning';
-            case 'processing': return 'info';
-            case 'shipped': return 'info';
-            case 'delivered': return 'success';
-            case 'cancelled': return 'warning';
-            default: return 'info';
+            case 'pending': return '!bg-yellow-50 !text-yellow-700 !border-yellow-200 border';
+            case 'confirmed': return '!bg-blue-50 !text-blue-700 !border-blue-200 border';
+            case 'processing': return '!bg-purple-50 !text-purple-700 !border-purple-200 border';
+            case 'shipped': return '!bg-cyan-50 !text-cyan-700 !border-cyan-200 border';
+            case 'delivered': return '!bg-green-50 !text-green-700 !border-green-200 border';
+            case 'cancelled': return '!bg-red-50 !text-red-700 !border-red-200 border';
+            default: return '!bg-secondary-50 !text-secondary-700 !border-secondary-200 border';
         }
     };
 
@@ -84,9 +85,7 @@ function OrderDetailContent() {
 
         showToast(`${order.order_items.length} item(s) added to cart`, 'success');
 
-        setTimeout(() => {
-            router.push('/portal/cart');
-        }, 500);
+        router.push('/portal/cart');
     };
 
     if (loading) {
@@ -145,7 +144,7 @@ function OrderDetailContent() {
                         })}
                     </p>
                 </div>
-                <Badge variant={getStatusColor(order.status) as 'success' | 'warning' | 'info'} className="self-start sm:self-center">
+                <Badge variant="info" className={`${getStatusColor(order.status)} self-start sm:self-center`}>
                     {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                 </Badge>
             </div>

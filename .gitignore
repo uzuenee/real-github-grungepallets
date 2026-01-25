@@ -16,6 +16,14 @@
 # production
 /build
 
+# codex / generated skill artifacts
+/dist/
+*.skill
+/skills/public/ask-user-question/
+
+# local safety backups
+/backups/
+
 # misc
 .DS_Store
 *.pem

@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { MainLayout } from '@/components/layout';
-import { PageHero } from '@/components/sections';
 import { ArticleCard } from '@/components/ui';
 import { Breadcrumbs } from '@/components/ui/Breadcrumbs';
 import { ARTICLES, ARTICLE_CATEGORIES } from '@/lib/articles';

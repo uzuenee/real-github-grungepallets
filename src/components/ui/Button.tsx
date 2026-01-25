@@ -31,6 +31,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
                 className={`
           inline-flex items-center justify-center font-semibold rounded-lg
           transition-all duration-200 ease-in-out
+          select-none touch-manipulation
+          active:scale-[0.98] active:translate-y-px
           focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2
           disabled:opacity-50 disabled:cursor-not-allowed
           ${variantStyles[variant]}

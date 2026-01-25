@@ -7,7 +7,7 @@ import { PortalLayout } from '@/components/layout';
 import { Card, Button, Badge, ToastProvider, useToast } from '@/components/ui';
 import { RefreshCw, Filter, ChevronDown, Package, Truck } from 'lucide-react';
 import { CartProvider, useCart } from '@/lib/contexts/CartContext';
-import { Order, OrderStatus } from '@/lib/supabase/types';
+import { Order } from '@/lib/supabase/types';
 
 interface OrderItem {
     id: string;
@@ -21,14 +21,16 @@ interface OrderWithItems extends Order {
     order_items: OrderItem[];
 }
 
-type StatusFilter = 'all' | 'pending' | 'processing' | 'shipped' | 'delivered';
+type StatusFilter = 'all' | 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
 
 const statusOptions = [
     { id: 'all', label: 'All Orders' },
     { id: 'pending', label: 'Pending' },
+    { id: 'confirmed', label: 'Confirmed' },
     { id: 'processing', label: 'Processing' },
     { id: 'shipped', label: 'Shipped' },
     { id: 'delivered', label: 'Delivered' },
+    { id: 'cancelled', label: 'Cancelled' },
 ];
 
 function OrdersContent() {
@@ -73,12 +75,13 @@ function OrdersContent() {
 
     const getStatusColor = (status: string) => {
         switch (status) {
-            case 'pending': return 'warning';
-            case 'processing': return 'info';
-            case 'shipped': return 'info';
-            case 'delivered': return 'success';
-            case 'cancelled': return 'warning';
-            default: return 'info';
+            case 'pending': return '!bg-yellow-50 !text-yellow-700 !border-yellow-200 border';
+            case 'confirmed': return '!bg-blue-50 !text-blue-700 !border-blue-200 border';
+            case 'processing': return '!bg-purple-50 !text-purple-700 !border-purple-200 border';
+            case 'shipped': return '!bg-cyan-50 !text-cyan-700 !border-cyan-200 border';
+            case 'delivered': return '!bg-green-50 !text-green-700 !border-green-200 border';
+            case 'cancelled': return '!bg-red-50 !text-red-700 !border-red-200 border';
+            default: return '!bg-secondary-50 !text-secondary-700 !border-secondary-200 border';
         }
     };
 
@@ -97,10 +100,7 @@ function OrdersContent() {
 
         showToast(`${order.order_items.length} item(s) added to cart`, 'success');
 
-        // Redirect to cart after brief delay
-        setTimeout(() => {
-            router.push('/portal/cart');
-        }, 500);
+        router.push('/portal/cart');
     };
 
     return (
@@ -203,7 +203,7 @@ function OrdersContent() {
                                                 ${order.total.toFixed(2)}
                                             </td>
                                             <td className="px-4 py-4 text-center">
-                                                <Badge variant={getStatusColor(order.status) as 'success' | 'warning' | 'info'}>
+                                                <Badge variant="info" className={getStatusColor(order.status)}>
                                                     {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                                                 </Badge>
                                             </td>
@@ -238,7 +238,7 @@ function OrdersContent() {
                                                 </p>
                                             )}
                                         </div>
-                                        <Badge variant={getStatusColor(order.status) as 'success' | 'warning' | 'info'}>
+                                        <Badge variant="info" className={getStatusColor(order.status)}>
                                             {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                                         </Badge>
                                     </div>

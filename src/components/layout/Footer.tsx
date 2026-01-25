@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { COMPANY_INFO, NAV_LINKS, SERVICES } from '@/lib/constants';
 
 export function Footer() {
@@ -12,7 +13,7 @@ export function Footer() {
                     {/* Column 1: Company Info */}
                     <div className="lg:col-span-1">
                         <Link href="/" className="inline-block mb-4">
-                            <img src="/logo.jpg" alt="Grunge Pallets" className="h-12 w-auto" />
+                            <Image src="/logo.jpg" alt="Grunge Pallets" width={160} height={48} className="h-12 w-auto" />
                         </Link>
                         <p className="text-secondary-200 leading-relaxed">
                             {COMPANY_INFO.tagline}
@@ -61,6 +62,12 @@ export function Footer() {
                                 {COMPANY_INFO.address}<br />
                                 {COMPANY_INFO.city}, {COMPANY_INFO.state} {COMPANY_INFO.zip}
                             </p>
+                            {COMPANY_INFO.secondaryAddress && COMPANY_INFO.secondaryCity && COMPANY_INFO.secondaryState && COMPANY_INFO.secondaryZip ? (
+                                <p>
+                                    {COMPANY_INFO.secondaryAddress}<br />
+                                    {COMPANY_INFO.secondaryCity}, {COMPANY_INFO.secondaryState} {COMPANY_INFO.secondaryZip}
+                                </p>
+                            ) : null}
                             <p>
                                 <span>{COMPANY_INFO.phone}</span>
                             </p>

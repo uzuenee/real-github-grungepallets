@@ -42,6 +42,10 @@ export interface CompanyInfo {
     city: string;
     state: string;
     zip: string;
+    secondaryAddress?: string;
+    secondaryCity?: string;
+    secondaryState?: string;
+    secondaryZip?: string;
     phone: string;
     email: string;
 }

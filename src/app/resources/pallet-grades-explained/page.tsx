@@ -37,6 +37,7 @@ export default function PalletGradesExplainedPage() {
                 category="Education"
                 readingTime={5}
                 author="Grunge Pallets Team"
+                image={article.image}
                 relatedArticles={relatedArticles}
             >
                 <p className="text-xl text-secondary-400 mb-8">

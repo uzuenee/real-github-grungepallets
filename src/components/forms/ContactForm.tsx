@@ -15,6 +15,7 @@ interface FormData {
 interface FormErrors {
     name?: string;
     email?: string;
+    phone?: string;
     message?: string;
 }
 
@@ -27,6 +28,7 @@ export function ContactForm() {
         message: '',
     });
     const [errors, setErrors] = useState<FormErrors>({});
+    const [submitError, setSubmitError] = useState<string | null>(null);
     const [isSubmitted, setIsSubmitted] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -43,6 +45,10 @@ export function ContactForm() {
             newErrors.email = 'Please enter a valid email';
         }
 
+        if (!formData.phone.trim()) {
+            newErrors.phone = 'Phone is required';
+        }
+
         if (!formData.message.trim()) {
             newErrors.message = 'Message is required';
         }
@@ -57,29 +63,31 @@ export function ContactForm() {
         if (!validateForm()) return;
 
         setIsSubmitting(true);
+        setSubmitError(null);
+
+        const submissionId = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
         try {
-            // Send email notification
-            await fetch('/api/email/contact', {
+            const response = await fetch('/api/forms/contact', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData),
+                body: JSON.stringify({
+                    submissionId,
+                    ...formData,
+                }),
             });
 
-            // Also send to n8n webhook if configured
-            const webhookUrl = process.env.NEXT_PUBLIC_N8N_CONTACT_WEBHOOK;
-            if (webhookUrl) {
-                await fetch(webhookUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        ...formData,
-                        submitted_at: new Date().toISOString(),
-                    }),
-                });
+            if (!response.ok) {
+                const text = await response.text().catch(() => '');
+                setSubmitError(text || 'Failed to send message. Please try again.');
+                setIsSubmitting(false);
+                return;
             }
         } catch (error) {
             console.error('Failed to submit contact form:', error);
+            setSubmitError('Failed to send message. Please try again.');
+            setIsSubmitting(false);
+            return;
         }
 
         setIsSubmitting(false);
@@ -108,7 +116,7 @@ export function ContactForm() {
                 </div>
                 <h3 className="text-2xl font-bold text-secondary mb-2">Message Sent!</h3>
                 <p className="text-secondary-400">
-                    Thank you for reaching out. We'll get back to you within 24 hours.
+                    Thank you for reaching out. We&apos;ll get back to you within 24 hours.
                 </p>
             </div>
         );
@@ -116,6 +124,11 @@ export function ContactForm() {
 
     return (
         <form onSubmit={handleSubmit} className="space-y-6">
+            {submitError && (
+                <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    {submitError}
+                </div>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <Input
                     label="Name *"
@@ -145,11 +158,12 @@ export function ContactForm() {
                     placeholder="Your Company Name"
                 />
                 <Input
-                    label="Phone"
+                    label="Phone *"
                     name="phone"
                     type="tel"
                     value={formData.phone}
                     onChange={handleChange}
+                    error={errors.phone}
                     placeholder="(404) 555-1234"
                 />
             </div>

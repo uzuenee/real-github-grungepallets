@@ -23,7 +23,11 @@ const contactInfo = [
     {
         icon: MapPin,
         label: 'Address',
-        value: `${COMPANY_INFO.address}\n${COMPANY_INFO.city}, ${COMPANY_INFO.state} ${COMPANY_INFO.zip}`,
+        value: `${COMPANY_INFO.address}\n${COMPANY_INFO.city}, ${COMPANY_INFO.state} ${COMPANY_INFO.zip}${
+            COMPANY_INFO.secondaryAddress && COMPANY_INFO.secondaryCity && COMPANY_INFO.secondaryState && COMPANY_INFO.secondaryZip
+                ? `\n\n${COMPANY_INFO.secondaryAddress}\n${COMPANY_INFO.secondaryCity}, ${COMPANY_INFO.secondaryState} ${COMPANY_INFO.secondaryZip}`
+                : ''
+        }`,
     },
     {
         icon: Phone,

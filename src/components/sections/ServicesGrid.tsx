@@ -27,7 +27,7 @@ const services = [
             'Reduces your disposal costs',
         ],
         buttonText: 'Schedule Pickup',
-        buttonHref: '/contact?service=removal',
+        buttonHref: '/quote?type=sell',
     },
     {
         icon: Truck,

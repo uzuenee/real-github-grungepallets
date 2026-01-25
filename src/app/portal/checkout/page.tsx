@@ -13,7 +13,7 @@ function CheckoutContent() {
     const router = useRouter();
     const { items, getTotal, clearCart } = useCart();
     const { profile } = useAuth();
-    const { subtotal, delivery, total } = getTotal();
+    const { subtotal, total } = getTotal();
 
     const [deliveryNotes, setDeliveryNotes] = useState('');
     const [acceptTerms, setAcceptTerms] = useState(false);

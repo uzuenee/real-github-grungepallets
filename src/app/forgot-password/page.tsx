@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
 import { AuthLayout } from '@/components/layout';
 import { Input, Button } from '@/components/ui';
@@ -42,7 +43,7 @@ function ForgotPasswordContent() {
         const supabase = createClient();
         const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
         const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: `${siteUrl}/auth/callback?next=/reset-password`,
+            redirectTo: `${siteUrl}/reset-password`,
         });
 
         if (resetError) {
@@ -83,7 +84,7 @@ function ForgotPasswordContent() {
                 {/* Logo */}
                 <div className="text-center mb-8">
                     <Link href="/" className="inline-block">
-                        <img src="/logo.jpg" alt="Grunge Pallets" className="h-12 w-auto mx-auto" />
+                        <Image src="/logo.jpg" alt="Grunge Pallets" width={160} height={48} className="h-12 w-auto mx-auto" />
                     </Link>
                     <p className="text-secondary-400 mt-2">Reset your password</p>
                 </div>

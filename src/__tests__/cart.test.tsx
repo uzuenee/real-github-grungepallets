@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { renderHook, act } from '@testing-library/react';
-import { CartProvider, useCart, CartItem } from '@/lib/contexts/CartContext';
+import { CartProvider, useCart } from '@/lib/contexts/CartContext';
 
 // Mock localStorage
 const localStorageMock = (() => {

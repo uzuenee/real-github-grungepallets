@@ -1,5 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { enforceMaxContentLength } from '@/lib/security/requestGuards';
+import { rateLimit } from '@/lib/security/rateLimit';
 
 export async function GET() {
     const supabase = await createClient();
@@ -33,6 +35,14 @@ export async function PATCH(request: NextRequest) {
     }
 
     try {
+        const tooLarge = enforceMaxContentLength(request, 32 * 1024);
+        if (tooLarge) return tooLarge;
+
+        const limited = rateLimit(`profile:update:${user.id}`, { limit: 20, windowMs: 60_000 });
+        if (!limited.allowed) {
+            return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: limited.headers });
+        }
+
         const body = await request.json();
 
         // Only allow updating specific fields

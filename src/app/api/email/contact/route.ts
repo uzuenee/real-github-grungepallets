@@ -1,15 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sendAdminContactNotification } from '@/lib/email';
+import { enforceMaxContentLength, enforceRateLimit } from '@/lib/security/requestGuards';
 
 export async function POST(request: NextRequest) {
     try {
+        const tooLarge = enforceMaxContentLength(request, 64 * 1024);
+        if (tooLarge) return tooLarge;
+
+        const limited = enforceRateLimit({
+            request,
+            keyPrefix: 'email:contact',
+            limit: 5,
+            windowMs: 60_000,
+        });
+        if ('response' in limited) return limited.response;
+
         const body = await request.json();
         const { name, email, company, phone, message } = body;
 
         // Validate required fields
-        if (!name || !email || !message) {
+        if (!name || !email || !phone || !message) {
             return NextResponse.json(
-                { error: 'Name, email, and message are required' },
+                { error: 'Name, email, phone, and message are required' },
                 { status: 400 }
             );
         }

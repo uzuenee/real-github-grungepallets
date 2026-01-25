@@ -21,8 +21,6 @@ jest.mock('@/lib/supabase/server', () => ({
     })),
 }));
 
-import { NextRequest } from 'next/server';
-
 describe('API Routes', () => {
     describe('Orders API', () => {
         describe('POST /api/orders', () => {

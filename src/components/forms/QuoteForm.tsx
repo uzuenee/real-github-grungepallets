@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 import { Input, Button } from '@/components/ui';
-import { Package, Recycle, Upload, X, ImageIcon } from 'lucide-react';
+import { Package, Recycle, Upload, X } from 'lucide-react';
 import { formatPhoneNumber } from '@/lib/utils/phoneFormat';
 
 // Constants for photo upload
@@ -79,15 +81,25 @@ const palletConditions = [
 ];
 
 export function QuoteForm() {
+    const searchParams = useSearchParams();
     const [quoteType, setQuoteType] = useState<QuoteType>(null);
     const [isSubmitted, setIsSubmitted] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [submitError, setSubmitError] = useState<string | null>(null);
     const [errors, setErrors] = useState<FormErrors>({});
     const [products, setProducts] = useState<Product[]>([]);
     const [photos, setPhotos] = useState<ProcessedImage[]>([]);
     const [photoError, setPhotoError] = useState<string | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Read URL parameter and set quote type
+    useEffect(() => {
+        const typeParam = searchParams.get('type');
+        if (typeParam === 'buy' || typeParam === 'sell') {
+            setQuoteType(typeParam);
+        }
+    }, [searchParams]);
 
     // Fetch products from database on mount
     useEffect(() => {
@@ -177,41 +189,48 @@ export function QuoteForm() {
         if (!isValid) return;
 
         setIsSubmitting(true);
+        setSubmitError(null);
+
+        const submissionId = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
         // Get display labels instead of internal IDs
         const palletTypeLabel = palletTypes.find(p => p.value === buyData.palletType)?.label || buyData.palletType;
         const conditionLabel = palletConditions.find(c => c.value === sellData.palletCondition)?.label || sellData.palletCondition;
 
-        const requestData = {
-            type: quoteType,
-            data: quoteType === 'buy'
-                ? { ...buyData, palletType: palletTypeLabel }
-                : { ...sellData, palletCondition: conditionLabel },
-            photos: quoteType === 'sell' ? photos.map(p => p.base64) : [],
-        };
-
         try {
-            // Send email notification
-            await fetch('/api/email/quote', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(requestData),
-            });
-
-            // Also send to n8n webhook if configured
-            const webhookUrl = process.env.NEXT_PUBLIC_N8N_QUOTE_WEBHOOK;
-            if (webhookUrl) {
-                await fetch(webhookUrl, {
+            let response: Response;
+            if (quoteType === 'buy') {
+                response = await fetch('/api/forms/quote', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        ...requestData,
-                        submitted_at: new Date().toISOString(),
+                        submissionId,
+                        data: { ...buyData, palletType: palletTypeLabel },
+                    }),
+                });
+            } else {
+                response = await fetch('/api/forms/pickup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        submissionId,
+                        data: { ...sellData, palletCondition: conditionLabel },
+                        photos: photos.map(p => p.base64),
                     }),
                 });
             }
+
+            if (!response.ok) {
+                const text = await response.text().catch(() => '');
+                setSubmitError(text || 'Submission failed. Please try again.');
+                setIsSubmitting(false);
+                return;
+            }
         } catch (error) {
             console.error('Failed to submit quote:', error);
+            setSubmitError('Submission failed. Please try again.');
+            setIsSubmitting(false);
+            return;
         }
 
         setIsSubmitting(false);
@@ -352,6 +371,11 @@ export function QuoteForm() {
             </h2>
 
             <form onSubmit={handleSubmit} className="space-y-6">
+                {submitError && (
+                    <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                        {submitError}
+                    </div>
+                )}
                 {quoteType === 'buy' ? (
                     <>
                         {/* Buy Form Fields */}
@@ -469,9 +493,13 @@ export function QuoteForm() {
                                 <div className="flex flex-wrap gap-3 mb-4">
                                     {photos.map((photo, index) => (
                                         <div key={index} className="relative group">
-                                            <img
+                                            <Image
                                                 src={photo.base64}
                                                 alt={photo.name}
+                                                width={80}
+                                                height={80}
+                                                sizes="80px"
+                                                unoptimized
                                                 className="w-20 h-20 object-cover rounded-lg border border-secondary-200"
                                             />
                                             <button

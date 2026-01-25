@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import {
     LayoutDashboard,
@@ -19,7 +20,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import {
-    useShopFilter,
+    useOptionalShopFilter,
     categories as defaultCategories,
     sortOptions,
     SortOption,
@@ -42,16 +43,7 @@ export function PortalLayout({ children }: PortalLayoutProps) {
     // Check if we're on the shop page
     const isShopPage = pathname === '/portal/shop';
 
-    // Get filter context - will throw if not wrapped, so we handle it
-    let shopFilter: ReturnType<typeof useShopFilter> | null = null;
-    try {
-        shopFilter = useShopFilter();
-    } catch {
-        // Not wrapped in ShopFilterProvider, which is fine for non-shop pages
-    }
-
-    // Sync cart count and subtotal from localStorage
-    const [cartSubtotal, setCartSubtotal] = useState(0);
+    const shopFilter = useOptionalShopFilter();
 
     useEffect(() => {
         const updateCartData = () => {
@@ -60,29 +52,22 @@ export function PortalLayout({ children }: PortalLayoutProps) {
                 if (saved) {
                     const items = JSON.parse(saved);
                     const count = items.reduce((sum: number, item: { quantity: number }) => sum + item.quantity, 0);
-                    const subtotal = items.reduce((sum: number, item: { quantity: number; price: number; isCustom?: boolean }) => {
-                        if (item.isCustom) return sum;
-                        return sum + (item.price * item.quantity);
-                    }, 0);
                     setCartCount(count);
-                    setCartSubtotal(subtotal);
                 } else {
                     setCartCount(0);
-                    setCartSubtotal(0);
                 }
             } catch {
                 setCartCount(0);
-                setCartSubtotal(0);
             }
         };
 
         updateCartData();
         window.addEventListener('storage', updateCartData);
-        const interval = setInterval(updateCartData, 1000);
+        window.addEventListener('grunge-pallets-cart-updated', updateCartData);
 
         return () => {
             window.removeEventListener('storage', updateCartData);
-            clearInterval(interval);
+            window.removeEventListener('grunge-pallets-cart-updated', updateCartData);
         };
     }, []);
 
@@ -151,7 +136,7 @@ export function PortalLayout({ children }: PortalLayoutProps) {
                             {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
                         </button>
                         <Link href="/portal" className="flex items-center">
-                            <img src="/logo.jpg" alt="Grunge Pallets" className="h-10 w-auto" />
+                            <Image src="/logo.jpg" alt="Grunge Pallets" width={140} height={40} className="h-10 w-auto" />
                         </Link>
                     </div>
 

@@ -1,5 +1,6 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { sendOrderDetailsUpdated } from '@/lib/email';
 
 // PATCH - Update order item price (for custom items)
 export async function PATCH(
@@ -8,8 +9,6 @@ export async function PATCH(
 ) {
     const supabase = await createClient();
     const itemId = params.itemId;
-
-    console.log('Updating order item price for:', itemId);
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
@@ -33,16 +32,14 @@ export async function PATCH(
         const body = await request.json();
         const { unit_price } = body;
 
-        console.log('Price to set:', unit_price);
-
         if (typeof unit_price !== 'number' || unit_price < 0) {
             return NextResponse.json({ error: 'Invalid price' }, { status: 400 });
         }
 
         // First get the order_id and item details for this item
-        const { data: existingItem, error: fetchError } = await supabase
+        const { data: existingItem, error: fetchError } = await adminClient
             .from('order_items')
-            .select('id, order_id, product_name, quantity, is_custom')
+            .select('id, order_id, product_name, quantity, is_custom, unit_price')
             .eq('id', itemId)
             .single();
 
@@ -51,8 +48,10 @@ export async function PATCH(
             return NextResponse.json({ error: 'Order item not found' }, { status: 404 });
         }
 
-        // Update the order item price (without .single() to avoid RLS issues)
-        const { error: updateError } = await supabase
+        const previousUnitPrice = existingItem.unit_price as number;
+
+        // Update the order item price
+        const { error: updateError } = await adminClient
             .from('order_items')
             .update({ unit_price })
             .eq('id', itemId);
@@ -63,23 +62,65 @@ export async function PATCH(
         }
 
         // Recalculate order total
-        const { data: orderItems } = await supabase
+        const { data: orderItems } = await adminClient
             .from('order_items')
-            .select('quantity, unit_price')
+            .select('product_name, quantity, unit_price')
             .eq('order_id', existingItem.order_id);
 
         let newTotal = 0;
         if (orderItems) {
-            newTotal = orderItems.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
-            console.log('New order total:', newTotal);
+            const subtotal = orderItems.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
 
-            await supabase
+            const { data: currentOrder } = await adminClient
+                .from('orders')
+                .select('id, user_id, delivery_price, delivery_date')
+                .eq('id', existingItem.order_id)
+                .single();
+
+            const deliveryPrice = currentOrder?.delivery_price ?? 0;
+            newTotal = subtotal + deliveryPrice;
+
+            await adminClient
                 .from('orders')
                 .update({ total: newTotal })
                 .eq('id', existingItem.order_id);
+
+            // Email customer about pricing update (don't block response)
+            if (currentOrder?.user_id) {
+                const { data: profile } = await adminClient
+                    .from('profiles')
+                    .select('contact_name')
+                    .eq('id', currentOrder.user_id)
+                    .single();
+
+                const { data: authUser } = await adminClient.auth.admin.getUserById(currentOrder.user_id);
+                const customerEmail = authUser?.user?.email;
+
+                if (customerEmail) {
+                    const updates = [
+                        `Pricing updated for <strong>${existingItem.product_name}</strong>: $${previousUnitPrice.toFixed(2)} → $${unit_price.toFixed(2)}.`,
+                    ];
+
+                    sendOrderDetailsUpdated({
+                        userId: currentOrder.user_id,
+                        customerEmail,
+                        customerName: profile?.contact_name || 'Customer',
+                        orderId: existingItem.order_id,
+                        updates,
+                        deliveryDate: currentOrder.delivery_date || undefined,
+                        items: orderItems.map((i) => ({
+                            product_name: i.product_name,
+                            quantity: i.quantity,
+                            unit_price: i.unit_price,
+                        })),
+                        orderTotal: newTotal,
+                        deliveryPrice: currentOrder.delivery_price ?? null,
+                    }).catch((err) => console.error('[Order Item] Update email error:', err));
+                }
+            }
         }
 
-        return NextResponse.json({ success: true, item: { ...existingItem, unit_price } });
+        return NextResponse.json({ success: true, item: { ...existingItem, unit_price }, order_total: newTotal });
     } catch (err) {
         console.error('Catch error:', err);
         return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });

@@ -54,6 +54,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         if (isHydrated) {
             localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
+            window.dispatchEvent(new CustomEvent('grunge-pallets-cart-updated'));
         }
     }, [items, isHydrated]);
 

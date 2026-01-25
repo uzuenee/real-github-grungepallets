@@ -8,7 +8,7 @@ import { CartProvider, useCart } from '@/lib/contexts/CartContext';
 
 function CartContent() {
     const { items, updateQuantity, removeItem, getTotal } = useCart();
-    const { subtotal, delivery, total } = getTotal();
+    const { subtotal, total } = getTotal();
 
     if (items.length === 0) {
         return (

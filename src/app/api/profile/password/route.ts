@@ -1,8 +1,13 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { enforceMaxContentLength } from '@/lib/security/requestGuards';
+import { rateLimit } from '@/lib/security/rateLimit';
 
 // Change password endpoint
 export async function POST(request: NextRequest) {
+    const tooLarge = enforceMaxContentLength(request, 16 * 1024);
+    if (tooLarge) return tooLarge;
+
     const supabase = await createClient();
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -12,6 +17,11 @@ export async function POST(request: NextRequest) {
     }
 
     try {
+        const limited = rateLimit(`profile:password:${user.id}`, { limit: 5, windowMs: 60_000 });
+        if (!limited.allowed) {
+            return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: limited.headers });
+        }
+
         const body = await request.json();
         const { currentPassword, newPassword } = body;
 

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Card, Button } from '@/components/ui';
 import { Package, ShoppingCart, TrendingUp, LogOut, RefreshCw, Users, Shield, CheckCircle, XCircle, Trash2, X, Copy, Check, User, MapPin, Calendar, FileText, Truck } from 'lucide-react';
 import { useAuth } from '@/lib/contexts/AuthContext';
@@ -33,6 +34,7 @@ interface CustomerProfile {
     id: string;
     company_name: string;
     contact_name: string;
+    email?: string | null;
     phone: string;
     address: string;
     city: string;
@@ -72,14 +74,25 @@ interface PickupWithProfile {
 
 const pickupStatusOptions = ['pending', 'scheduled', 'completed', 'cancelled'] as const;
 
+function getPendingReadiness(order: OrderWithProfile) {
+    const deliveryPriceSet = order.delivery_price != null;
+    const deliveryDateSet = Boolean(order.delivery_date);
+    const customItems = order.order_items?.filter(i => i.is_custom) || [];
+    const customPricesSet = customItems.every(i => typeof i.unit_price === 'number' && i.unit_price > 0);
+
+    return {
+        ok: deliveryPriceSet && deliveryDateSet && customPricesSet,
+        deliveryPriceSet,
+        deliveryDateSet,
+        customPricesSet,
+    };
+}
+
 export default function AdminPage() {
-    const { signOut, profile, user: authUser, loading: authLoading } = useAuth();
+    const { signOut, profile, user: authUser } = useAuth();
     const router = useRouter();
     const currentUserId = authUser?.id || profile?.id;
     const [activeTab, setActiveTab] = useState<AdminTab>('orders');
-
-    // Debug log to check currentUserId
-    console.log('Auth Debug:', { authUserId: authUser?.id, profileId: profile?.id, currentUserId, authLoading });
 
     // Orders state
     const [orders, setOrders] = useState<OrderWithProfile[]>([]);
@@ -234,20 +247,40 @@ export default function AdminPage() {
 
     const handleStatusChange = async (orderId: string, newStatus: OrderStatus) => {
         setUpdatingOrder(orderId);
+        try {
+            const current = orders.find(o => o.id === orderId);
+            if (current && current.status === 'pending' && newStatus !== 'pending' && newStatus !== 'cancelled') {
+                const readiness = getPendingReadiness(current);
+                if (!readiness.ok) {
+                    const missing: string[] = [];
+                    if (!readiness.deliveryPriceSet) missing.push('delivery price');
+                    if (!readiness.deliveryDateSet) missing.push('delivery date');
+                    if (!readiness.customPricesSet) missing.push('custom item prices');
+                    alert(`Before confirming, set: ${missing.join(', ')}.`);
+                    return;
+                }
+            }
 
-        const response = await fetch(`/api/orders/${orderId}/status`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: newStatus }),
-        });
+            const response = await fetch(`/api/orders/${orderId}/status`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: newStatus }),
+            });
 
-        if (response.ok) {
-            setOrders(prev => prev.map(order =>
-                order.id === orderId ? { ...order, status: newStatus } : order
-            ));
+            if (response.ok) {
+                setOrders(prev => prev.map(order =>
+                    order.id === orderId ? { ...order, status: newStatus } : order
+                ));
+            } else {
+                const error = await response.json();
+                alert(error.error || 'Failed to update status');
+            }
+        } catch (err) {
+            console.error('Update status error:', err);
+            alert('Failed to update status');
+        } finally {
+            setUpdatingOrder(null);
         }
-
-        setUpdatingOrder(null);
     };
 
     const handleDeliveryDateChange = async (orderId: string, date: string) => {
@@ -260,6 +293,8 @@ export default function AdminPage() {
         setOrders(prev => prev.map(order =>
             order.id === orderId ? { ...order, delivery_date: date } : order
         ));
+
+        setSelectedOrder((prev) => (prev && prev.id === orderId ? { ...prev, delivery_date: date } : prev));
     };
 
     const handleUserUpdate = async (userId: string, field: 'approved' | 'is_admin', value: boolean) => {
@@ -362,7 +397,8 @@ export default function AdminPage() {
                     const updatedItems = selectedOrder.order_items.map(item =>
                         item.id === itemId ? { ...item, unit_price: price } : item
                     );
-                    const newTotal = updatedItems.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
+                    const subtotal = updatedItems.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
+                    const newTotal = subtotal + (selectedOrder.delivery_price ?? 0);
                     setSelectedOrder({
                         ...selectedOrder,
                         order_items: updatedItems,
@@ -370,7 +406,15 @@ export default function AdminPage() {
                     });
                     // Also update in orders list
                     setOrders(prev => prev.map(o =>
-                        o.id === selectedOrder.id ? { ...o, total: newTotal } : o
+                        o.id === selectedOrder.id
+                            ? {
+                                ...o,
+                                total: newTotal,
+                                order_items: o.order_items?.map((item) =>
+                                    item.id === itemId ? { ...item, unit_price: price } : item
+                                ),
+                            }
+                            : o
                     ));
                 }
                 setEditingItemId(null);
@@ -493,7 +537,7 @@ export default function AdminPage() {
                     <div className="flex items-center justify-between h-16">
                         <div className="flex items-center gap-4">
                             <Link href="/" className="flex items-center">
-                                <img src="/logo.jpg" alt="Grunge Pallets" className="h-10 w-auto" />
+                                <Image src="/logo.jpg" alt="Grunge Pallets" width={140} height={40} className="h-10 w-auto" />
                             </Link>
                             <span className="px-2 py-1 bg-primary/10 text-primary text-xs font-semibold rounded">
                                 ADMIN
@@ -701,11 +745,15 @@ export default function AdminPage() {
                                                                                     'bg-secondary-50 border-secondary-200 text-secondary-700'
                                                                 }`}
                                                         >
-                                                            {statusOptions.map((status) => (
-                                                                <option key={status} value={status}>
-                                                                    {status.charAt(0).toUpperCase() + status.slice(1)}
-                                                                </option>
-                                                            ))}
+                                                            {statusOptions.map((status) => {
+                                                                const readiness = getPendingReadiness(order);
+                                                                const disabled = order.status === 'pending' && status !== 'pending' && status !== 'cancelled' && !readiness.ok;
+                                                                return (
+                                                                    <option key={status} value={status} disabled={disabled}>
+                                                                        {status.charAt(0).toUpperCase() + status.slice(1)}
+                                                                    </option>
+                                                                );
+                                                            })}
                                                         </select>
                                                     </td>
                                                     <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
@@ -1174,7 +1222,7 @@ export default function AdminPage() {
                                                                         <p><span className="font-medium">Grade:</span> {customSpecs.gradeLabel}</p>
                                                                     )}
                                                                     <p>
-                                                                        <span className="font-medium">Dimensions:</span> {customSpecs.length}" × {customSpecs.width}"
+                                                                        <span className="font-medium">Dimensions:</span> {customSpecs.length}&quot; × {customSpecs.width}&quot;
                                                                         {customSpecs.height && ` × ${customSpecs.height}"`}
                                                                     </p>
                                                                     {customSpecs.notes && (
@@ -1360,6 +1408,16 @@ export default function AdminPage() {
                                                 <a href={`tel:${selectedOrder.profiles?.phone}`} className="text-primary hover:underline text-sm">
                                                     {selectedOrder.profiles?.phone || 'N/A'}
                                                 </a>
+                                            </div>
+                                            <div className="col-span-2">
+                                                <p className="text-xs text-secondary-400 uppercase tracking-wider mb-1">Email</p>
+                                                {selectedOrder.profiles?.email ? (
+                                                    <a href={`mailto:${selectedOrder.profiles.email}`} className="text-primary hover:underline text-sm break-all">
+                                                        {selectedOrder.profiles.email}
+                                                    </a>
+                                                ) : (
+                                                    <p className="text-secondary-600 text-sm">N/A</p>
+                                                )}
                                             </div>
                                         </div>
                                     </div>

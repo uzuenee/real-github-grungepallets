@@ -3,9 +3,16 @@ import { ArrowLeft } from 'lucide-react';
 
 interface AuthLayoutProps {
     children: React.ReactNode;
+    maxWidth?: 'md' | 'lg' | 'xl';
 }
 
-export function AuthLayout({ children }: AuthLayoutProps) {
+export function AuthLayout({ children, maxWidth = 'lg' }: AuthLayoutProps) {
+    const maxWidthClass = {
+        md: 'max-w-md',
+        lg: 'max-w-lg',
+        xl: 'max-w-xl',
+    }[maxWidth];
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-secondary via-secondary-600 to-secondary-500 flex flex-col">
             {/* Back Link */}
@@ -21,7 +28,7 @@ export function AuthLayout({ children }: AuthLayoutProps) {
 
             {/* Centered Content */}
             <div className="flex-1 flex items-center justify-center px-4 pb-12">
-                <div className="w-full max-w-md">
+                <div className={`w-full ${maxWidthClass}`}>
                     {children}
                 </div>
             </div>

@@ -10,12 +10,9 @@ export async function GET(
     const supabase = await createClient();
     const orderId = params.id;
 
-    console.log('Admin order detail - fetching order:', orderId);
-
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) {
-        console.log('Auth error:', authError);
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -28,7 +25,6 @@ export async function GET(
         .single();
 
     if (!adminProfile?.is_admin) {
-        console.log('User is not admin');
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -56,27 +52,34 @@ export async function GET(
     }
 
     if (!order) {
-        console.log('Order not found for id:', orderId);
         return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
 
     // Get the customer profile separately
-    console.log('Fetching profile for user_id:', order.user_id);
     const { data: customerProfile, error: profileError } = await supabase
         .from('profiles')
         .select('id, company_name, contact_name, phone, address, city, state, zip')
         .eq('id', order.user_id)
         .single();
 
-    console.log('Profile query result:', customerProfile, 'Error:', profileError);
+    if (profileError) {
+        console.error('Profile fetch error:', profileError);
+        return NextResponse.json({ error: profileError.message }, { status: 500 });
+    }
+
+    // Get customer email from auth.users (not stored in profiles)
+    const { data: authUser } = await adminClient.auth.admin.getUserById(order.user_id);
+    const customerEmail = authUser?.user?.email || null;
 
     // Combine order with profiles
     const orderWithProfile = {
         ...order,
-        profiles: customerProfile || {}
+        profiles: {
+            ...(customerProfile || {}),
+            email: customerEmail,
+        }
     };
 
-    console.log('Returning order:', orderWithProfile);
     return NextResponse.json({ order: orderWithProfile });
 }
 
@@ -160,6 +163,42 @@ export async function PATCH(
             return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
         }
 
+        // Enforce required fields before moving out of pending (except cancellation)
+        const { data: currentOrder, error: currentOrderError } = await adminClient
+            .from('orders')
+            .select('status, delivery_date, delivery_price, order_items(id, is_custom, unit_price)')
+            .eq('id', orderId)
+            .single();
+
+        if (currentOrderError || !currentOrder) {
+            return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+        }
+
+        if (currentOrder.status === 'pending' && status !== 'pending' && status !== 'cancelled') {
+            const effectiveDeliveryDate = delivery_date || currentOrder.delivery_date;
+            const deliveryPriceSet = currentOrder.delivery_price != null;
+
+            const customItems = (currentOrder.order_items as Array<{ id: string; is_custom?: boolean; unit_price: number }> | null) || [];
+            const customMissing = customItems
+                .filter((item) => item.is_custom)
+                .filter((item) => !(typeof item.unit_price === 'number' && item.unit_price > 0))
+                .map((item) => item.id);
+
+            if (!deliveryPriceSet || !effectiveDeliveryDate || customMissing.length > 0) {
+                return NextResponse.json(
+                    {
+                        error: 'Set delivery price, delivery date, and custom item prices before confirming this order.',
+                        missing: {
+                            delivery_price: !deliveryPriceSet,
+                            delivery_date: !effectiveDeliveryDate,
+                            custom_item_ids_missing_price: customMissing,
+                        },
+                    },
+                    { status: 400 }
+                );
+            }
+        }
+
         // Update the order
         const updateData: { status: string; delivery_date?: string } = { status };
         if (delivery_date) {
@@ -178,8 +217,7 @@ export async function PATCH(
             return NextResponse.json({ error: updateError.message }, { status: 500 });
         }
 
-        // Get customer info for email notification
-        // Note: email is NOT in profiles table, get from auth.users via admin API
+        // Email customer about status update with full pricing breakdown (don't block on this)
         const { data: profile } = await adminClient
             .from('profiles')
             .select('contact_name')
@@ -190,18 +228,27 @@ export async function PATCH(
         const customerEmail = authUser?.user?.email;
 
         if (customerEmail) {
-            // Send status update email (don't block on this)
+            const { data: fullOrder } = await adminClient
+                .from('orders')
+                .select('id, user_id, status, total, delivery_price, delivery_date, order_items(product_name, quantity, unit_price)')
+                .eq('id', orderId)
+                .single();
+
+            const orderItems = (fullOrder?.order_items as Array<{ product_name: string; quantity: number; unit_price: number }> | null) || [];
+
             sendOrderStatusUpdate({
                 userId: updatedOrder.user_id,
-                customerEmail: customerEmail,
+                customerEmail,
                 customerName: profile?.contact_name || 'Customer',
                 orderId: orderId,
                 newStatus: status,
-                deliveryDate: delivery_date,
+                deliveryDate: delivery_date || fullOrder?.delivery_date || undefined,
+                items: orderItems,
+                orderTotal: fullOrder?.total ?? updatedOrder.total,
+                deliveryPrice: fullOrder?.delivery_price ?? null,
             }).catch(err => console.error('[Admin Orders] Email error:', err));
         }
 
-        console.log(`[Admin Orders] Order ${orderId} status updated to ${status}`);
         return NextResponse.json({ order: updatedOrder, success: true });
     } catch (err) {
         console.error('Order status update error:', err);

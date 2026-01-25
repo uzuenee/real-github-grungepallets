@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Card, Button, Badge } from '@/components/ui';
 import { ArrowLeft, Package, User, MapPin, Calendar, Copy, Check } from 'lucide-react';
 import { Order, OrderStatus } from '@/lib/supabase/types';
@@ -15,6 +16,7 @@ interface OrderItem {
     product_name: string;
     quantity: number;
     unit_price: number;
+    is_custom?: boolean;
 }
 
 interface CustomerProfile {
@@ -32,6 +34,20 @@ interface CustomerProfile {
 interface OrderWithDetails extends Order {
     profiles: CustomerProfile;
     order_items: OrderItem[];
+}
+
+function getPendingReadiness(order: OrderWithDetails) {
+    const deliveryPriceSet = order.delivery_price != null;
+    const deliveryDateSet = Boolean(order.delivery_date);
+    const customItems = order.order_items.filter(i => i.is_custom);
+    const customPricesSet = customItems.every(i => typeof i.unit_price === 'number' && i.unit_price > 0);
+
+    return {
+        ok: deliveryPriceSet && deliveryDateSet && customPricesSet,
+        deliveryPriceSet,
+        deliveryDateSet,
+        customPricesSet,
+    };
 }
 
 export default function AdminOrderDetailPage() {
@@ -73,6 +89,18 @@ export default function AdminOrderDetailPage() {
         setUpdatingStatus(true);
 
         try {
+            if (order.status === 'pending' && newStatus !== 'pending' && newStatus !== 'cancelled') {
+                const readiness = getPendingReadiness(order);
+                if (!readiness.ok) {
+                    const missing: string[] = [];
+                    if (!readiness.deliveryPriceSet) missing.push('delivery price');
+                    if (!readiness.deliveryDateSet) missing.push('delivery date');
+                    if (!readiness.customPricesSet) missing.push('custom item prices');
+                    alert(`Before confirming, set: ${missing.join(', ')}.`);
+                    return;
+                }
+            }
+
             const response = await fetch(`/api/orders/${orderId}/status`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
@@ -81,9 +109,13 @@ export default function AdminOrderDetailPage() {
 
             if (response.ok) {
                 setOrder(prev => prev ? { ...prev, status: newStatus } : null);
+            } else {
+                const error = await response.json();
+                alert(error.error || 'Failed to update status');
             }
         } catch (err) {
             console.error('Failed to update status:', err);
+            alert('Failed to update status');
         } finally {
             setUpdatingStatus(false);
         }
@@ -159,7 +191,7 @@ export default function AdminOrderDetailPage() {
                     <div className="flex items-center justify-between h-16">
                         <div className="flex items-center gap-4">
                             <Link href="/" className="flex items-center">
-                                <img src="/logo.jpg" alt="Grunge Pallets" className="h-10 w-auto" />
+                                <Image src="/logo.jpg" alt="Grunge Pallets" width={140} height={40} className="h-10 w-auto" />
                             </Link>
                             <span className="px-2 py-1 bg-primary/10 text-primary text-xs font-semibold rounded">
                                 ADMIN
@@ -334,11 +366,15 @@ export default function AdminOrderDetailPage() {
                                         disabled={updatingStatus}
                                         className={`block w-full px-4 py-3 text-sm font-medium border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer ${getStatusColor(order.status)} ${updatingStatus ? 'opacity-50' : ''}`}
                                     >
-                                        {statusOptions.map((status) => (
-                                            <option key={status} value={status}>
-                                                {status.charAt(0).toUpperCase() + status.slice(1)}
-                                            </option>
-                                        ))}
+                                        {statusOptions.map((status) => {
+                                            const readiness = getPendingReadiness(order);
+                                            const disabled = order.status === 'pending' && status !== 'pending' && status !== 'cancelled' && !readiness.ok;
+                                            return (
+                                                <option key={status} value={status} disabled={disabled}>
+                                                    {status.charAt(0).toUpperCase() + status.slice(1)}
+                                                </option>
+                                            );
+                                        })}
                                     </select>
                                 </div>
                                 <div>

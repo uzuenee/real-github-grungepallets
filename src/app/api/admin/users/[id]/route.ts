@@ -63,8 +63,6 @@ export async function PATCH(
             .eq('id', id)
             .single();
 
-        console.log('Updating profile:', id, 'with data:', updateData);
-
         const { data, error } = await adminSupabase
             .from('profiles')
             .update(updateData)
