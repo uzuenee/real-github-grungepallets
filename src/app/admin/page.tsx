@@ -115,7 +115,7 @@ export default function AdminPage() {
     const [savingDeliveryPrice, setSavingDeliveryPrice] = useState(false);
 
     // Users state
-    const [users, setUsers] = useState<Array<Profile & { email?: string | null }>>([]);
+    const [users, setUsers] = useState<Array<Profile & { email?: string | null; email_verified?: boolean }>>([]);
     const [usersLoading, setUsersLoading] = useState(true);
     const [updatingUser, setUpdatingUser] = useState<string | null>(null);
 
@@ -864,8 +864,11 @@ export default function AdminPage() {
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-secondary-100">
-                                            {users.map((user) => (
-                                                <tr key={user.id} className={`hover:bg-secondary-50/50 transition-colors ${!user.approved ? 'bg-yellow-50/50' : ''} ${user.id === currentUserId ? 'bg-primary/5' : ''}`}>
+                                            {users.map((user) => {
+                                                const emailVerified = Boolean(user.email_verified);
+
+                                                return (
+                                                    <tr key={user.id} className={`hover:bg-secondary-50/50 transition-colors ${!user.approved ? 'bg-yellow-50/50' : ''} ${user.id === currentUserId ? 'bg-primary/5' : ''}`}>
                                                     <td className="px-6 py-4">
                                                         <div className="flex items-center gap-2">
                                                             <div>
@@ -899,6 +902,17 @@ export default function AdminPage() {
                                                             <span className="block w-full px-3 py-1.5 text-sm font-medium border-2 rounded-lg bg-secondary-100 border-secondary-200 text-secondary-400">
                                                                 {user.approved ? 'Approved' : 'Pending'}
                                                             </span>
+                                                        ) : !emailVerified ? (
+                                                            <div title="Email not verified">
+                                                                <select
+                                                                    value={user.approved ? 'approved' : 'pending'}
+                                                                    disabled
+                                                                    className="block w-full px-3 py-1.5 text-sm font-medium border-2 rounded-lg bg-secondary-100 border-secondary-200 text-secondary-400 opacity-60 cursor-not-allowed"
+                                                                >
+                                                                    <option value="approved">Approved</option>
+                                                                    <option value="pending">Pending</option>
+                                                                </select>
+                                                            </div>
                                                         ) : (
                                                             <select
                                                                 value={user.approved ? 'approved' : 'pending'}
@@ -919,6 +933,17 @@ export default function AdminPage() {
                                                             <span className="block w-full px-3 py-1.5 text-sm font-medium border-2 rounded-lg bg-secondary-100 border-secondary-200 text-secondary-400">
                                                                 {user.is_admin ? 'Admin' : 'User'}
                                                             </span>
+                                                        ) : !emailVerified ? (
+                                                            <div title="Email not verified">
+                                                                <select
+                                                                    value={user.is_admin ? 'admin' : 'user'}
+                                                                    disabled
+                                                                    className="block w-full px-3 py-1.5 text-sm font-medium border-2 rounded-lg bg-secondary-100 border-secondary-200 text-secondary-400 opacity-60 cursor-not-allowed"
+                                                                >
+                                                                    <option value="admin">Admin</option>
+                                                                    <option value="user">User</option>
+                                                                </select>
+                                                            </div>
                                                         ) : (
                                                             <select
                                                                 value={user.is_admin ? 'admin' : 'user'}
@@ -949,7 +974,8 @@ export default function AdminPage() {
                                                         )}
                                                     </td>
                                                 </tr>
-                                            ))}
+                                                );
+                                            })}
                                         </tbody>
                                     </table>
                                 </div>

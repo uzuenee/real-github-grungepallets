@@ -13,6 +13,7 @@ For a full file-by-file diff, see `docs/CHANGES_SINCE_LAST_COMMIT.md` (created a
 - Custom item pricing: admin can set unit price per custom item, auto-recalculate totals, and email customers about updates
 - User management: approve users, grant/revoke admin (prevents removing your own admin), delete users via Supabase Admin API
 - User management: show user email addresses in the list view
+- User management: approval/admin controls disabled until email is verified
 - Pickup management: list + detail pages, schedule date, set actual quantity, set price-per-pallet, pickup charge, admin notes, and total payout calculations
 
 ### Products & Categories

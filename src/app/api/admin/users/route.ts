@@ -36,6 +36,7 @@ export async function GET() {
 
     // Attach auth.users emails (not stored in profiles)
     const emailByUserId = new Map<string, string | null>();
+    const emailVerifiedByUserId = new Map<string, boolean>();
     const perPage = 1000;
     for (let page = 1; page <= 10; page++) {
         const { data, error: listError } = await adminClient.auth.admin.listUsers({ page, perPage });
@@ -45,6 +46,8 @@ export async function GET() {
         }
         for (const authUser of data.users) {
             emailByUserId.set(authUser.id, authUser.email ?? null);
+            const confirmedAt = authUser.email_confirmed_at || authUser.confirmed_at;
+            emailVerifiedByUserId.set(authUser.id, Boolean(confirmedAt));
         }
         if (data.users.length < perPage) break;
     }
@@ -52,6 +55,7 @@ export async function GET() {
     const usersWithEmail = (users || []).map((u) => ({
         ...u,
         email: emailByUserId.get(u.id) ?? null,
+        email_verified: emailVerifiedByUserId.get(u.id) ?? false,
     }));
 
     return NextResponse.json({ users: usersWithEmail });

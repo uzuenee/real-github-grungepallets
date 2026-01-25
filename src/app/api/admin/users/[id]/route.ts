@@ -55,6 +55,22 @@ export async function PATCH(
             return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
         }
 
+        // Don’t allow approving/promoting users until their email is verified
+        const attemptingApproval = updateData.approved === true;
+        const attemptingAdmin = updateData.is_admin === true;
+        if (attemptingApproval || attemptingAdmin) {
+            const { data: authData, error: authUserError } = await adminSupabase.auth.admin.getUserById(id);
+            if (authUserError) {
+                console.error('[Admin Users] getUserById error:', authUserError);
+                return NextResponse.json({ error: 'Failed to check email verification status' }, { status: 500 });
+            }
+
+            const confirmedAt = authData.user?.email_confirmed_at || authData.user?.confirmed_at;
+            if (!confirmedAt) {
+                return NextResponse.json({ error: 'Email not verified' }, { status: 400 });
+            }
+        }
+
         // Get user's current approval status before update
         // Note: email is NOT in profiles table, it's in auth.users
         const { data: currentProfile } = await adminSupabase
