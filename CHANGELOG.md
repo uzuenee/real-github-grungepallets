@@ -4,14 +4,15 @@ Notable changes per deployment.
 
 For a full file-by-file diff, see `docs/CHANGES_SINCE_LAST_COMMIT.md` (created as a one-time safety checkpoint during this batch of work).
 
-## 2026-01-25 (aff5908 → a4305b1)
+## 2026-01-25 (aff5908 -> cb06b1c)
 
 ### Admin Panel
 
-- Orders tab: list + filtering + detail panel, with “ready to confirm” checks (requires delivery fee/date + custom item pricing)
+- Orders tab: list + filtering + detail panel, with "ready to confirm" checks (requires delivery fee/date + custom item pricing)
 - Order detail: edit delivery fee/date, change status, copy order IDs, view customer contact/address
 - Custom item pricing: admin can set unit price per custom item, auto-recalculate totals, and email customers about updates
 - User management: approve users, grant/revoke admin (prevents removing your own admin), delete users via Supabase Admin API
+- User management: show user email addresses in the list view
 - Pickup management: list + detail pages, schedule date, set actual quantity, set price-per-pallet, pickup charge, admin notes, and total payout calculations
 
 ### Products & Categories
@@ -27,7 +28,7 @@ For a full file-by-file diff, see `docs/CHANGES_SINCE_LAST_COMMIT.md` (created a
 - Notification preferences API: persisted preferences with mandatory transactional toggles enforced (`src/app/api/profile/notifications/route.ts`)
 - Portal UX updates across cart/checkout/orders/reset-password/signup flows (`src/app/portal/**`, `src/app/reset-password/page.tsx`, `src/app/signup/page.tsx`)
 
-### Forms → n8n Webhooks
+### Forms -> n8n Webhooks
 
 - Public form intake routes: `POST /api/forms/contact`, `POST /api/forms/quote`, `POST /api/forms/pickup`
 - Server-side forwarding to n8n with HMAC (`X-Signature`) + idempotency (`X-Idempotency-Key`) using `N8N_WEBHOOK_SECRET`
