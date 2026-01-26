@@ -144,7 +144,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: itemsError.message }, { status: 500 });
         }
 
-        // Send email notifications (don't block on this)
+        // Send email notifications (best-effort, but await so serverless doesn't drop them mid-flight)
         // Note: email is NOT in profiles table, it's in auth.users (available via user.email)
         const { data: profile, error: profileError } = await supabase
             .from('profiles')
@@ -156,32 +156,51 @@ export async function POST(request: NextRequest) {
             // Use the email from the auth user, not from profiles
             const customerEmail = user.email || '';
 
-            // Send order confirmation to customer
-            sendOrderConfirmation({
-                userId: user.id,
-                customerEmail: customerEmail,
-                customerName: profile.contact_name || 'Customer',
-                orderId: order.id,
-                orderTotal: parsedTotal,
-                items: orderItems.map(item => ({
-                    product_name: item.product_name,
-                    quantity: item.quantity,
-                    unit_price: item.unit_price,
-                })),
-            }).catch(err => console.error('[Orders API] Email error:', err));
+            const emailJobs = [
+                {
+                    label: 'customer-confirmation',
+                    promise: sendOrderConfirmation({
+                        userId: user.id,
+                        customerEmail: customerEmail,
+                        customerName: profile.contact_name || 'Customer',
+                        orderId: order.id,
+                        orderTotal: parsedTotal,
+                        items: orderItems.map((item) => ({
+                            product_name: item.product_name,
+                            quantity: item.quantity,
+                            unit_price: item.unit_price,
+                        })),
+                    }),
+                },
+                {
+                    label: 'admin-new-order',
+                    promise: sendAdminNewOrderNotification({
+                        orderId: order.id,
+                        customerName: profile.contact_name || 'Customer',
+                        companyName: profile.company_name || 'Unknown',
+                        orderTotal: parsedTotal,
+                        items: orderItems.map((item) => ({
+                            product_name: item.product_name,
+                            quantity: item.quantity,
+                            unit_price: item.unit_price,
+                        })),
+                    }),
+                },
+            ];
 
-            // Send admin notification
-            sendAdminNewOrderNotification({
-                orderId: order.id,
-                customerName: profile.contact_name || 'Customer',
-                companyName: profile.company_name || 'Unknown',
-                orderTotal: parsedTotal,
-                items: orderItems.map(item => ({
-                    product_name: item.product_name,
-                    quantity: item.quantity,
-                    unit_price: item.unit_price,
-                })),
-            }).catch(err => console.error('[Orders API] Admin email error:', err));
+            const results = await Promise.allSettled(emailJobs.map((job) => job.promise));
+            results.forEach((result, index) => {
+                const label = emailJobs[index]?.label || `job-${index}`;
+
+                if (result.status === 'rejected') {
+                    console.error('[Orders API] Email job threw:', label, result.reason);
+                    return;
+                }
+
+                if (!result.value.success) {
+                    console.error('[Orders API] Email send failed:', { label, error: result.value.error || '' });
+                }
+            });
         } else {
             console.warn('[Orders API] No profile found, skipping email notifications', { profileError });
         }

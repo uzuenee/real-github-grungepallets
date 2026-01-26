@@ -118,30 +118,49 @@ export async function POST(request: NextRequest) {
             .filter(Boolean)
             .join(', ');
 
-        // Send confirmation email to user
-        sendPickupConfirmationEmail({
-            customerEmail: user.email || '',
-            customerName: profile?.contact_name || 'Customer',
-            pickupId: pickup.id,
-            palletCondition: pallet_condition,
-            estimatedQuantity: qty,
-            pickupAddress: fullAddress,
-            preferredDate: preferred_date,
-        }).catch(err => console.error('[Pickup] Customer email failed:', err));
+        const emailJobs = [
+            {
+                label: 'customer-confirmation',
+                promise: sendPickupConfirmationEmail({
+                    customerEmail: user.email || '',
+                    customerName: profile?.contact_name || 'Customer',
+                    pickupId: pickup.id,
+                    palletCondition: pallet_condition,
+                    estimatedQuantity: qty,
+                    pickupAddress: fullAddress,
+                    preferredDate: preferred_date,
+                }),
+            },
+            {
+                label: 'admin-new-pickup',
+                promise: sendAdminPickupNotification({
+                    customerName: profile?.contact_name || 'Customer',
+                    customerEmail: user.email || '',
+                    customerPhone: profile?.phone,
+                    companyName: profile?.company_name,
+                    pickupId: pickup.id,
+                    palletCondition: pallet_condition,
+                    estimatedQuantity: qty,
+                    pickupAddress: fullAddress,
+                    preferredDate: preferred_date,
+                    notes,
+                }),
+            },
+        ];
 
-        // Send notification email to admin
-        sendAdminPickupNotification({
-            customerName: profile?.contact_name || 'Customer',
-            customerEmail: user.email || '',
-            customerPhone: profile?.phone,
-            companyName: profile?.company_name,
-            pickupId: pickup.id,
-            palletCondition: pallet_condition,
-            estimatedQuantity: qty,
-            pickupAddress: fullAddress,
-            preferredDate: preferred_date,
-            notes,
-        }).catch(err => console.error('[Pickup] Admin email failed:', err));
+        const results = await Promise.allSettled(emailJobs.map((job) => job.promise));
+        results.forEach((result, index) => {
+            const label = emailJobs[index]?.label || `job-${index}`;
+
+            if (result.status === 'rejected') {
+                console.error('[Pickup] Email job threw:', label, result.reason);
+                return;
+            }
+
+            if (!result.value.success) {
+                console.error('[Pickup] Email send failed:', { label, error: result.value.error || '' });
+            }
+        });
 
         return NextResponse.json({ pickup }, { status: 201 });
     } catch (error) {

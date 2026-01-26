@@ -1,21 +1,13 @@
-﻿import { Resend } from 'resend';
 import { createClient } from '@/lib/supabase/server';
 import { escapeHtml } from '@/lib/security/escapeHtml';
-
-// Lazy initialization to avoid build-time errors
-let resendClient: Resend | null = null;
-function getResendClient(): Resend {
-    if (!resendClient) {
-        resendClient = new Resend(process.env.RESEND_API_KEY);
-    }
-    return resendClient;
-}
+import { createHash } from 'crypto';
 
 function getAdminEmail(): string {
     return process.env.ADMIN_EMAIL || '';
 }
 
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'Grunge Pallets <onboarding@resend.dev>';
+const RESEND_BASE_URL = process.env.RESEND_BASE_URL || 'https://api.resend.com';
 
 interface EmailResult {
     success: boolean;
@@ -24,6 +16,18 @@ interface EmailResult {
 
 function sanitizeEmailHeader(value: string): string {
     return value.replace(/[\r\n]+/g, ' ').trim();
+}
+
+function sanitizeEmailRecipients(value: string): string | string[] {
+    const parts = value
+        .split(/[,;]+/)
+        .map((part) => sanitizeEmailHeader(part))
+        .filter(Boolean);
+
+    if (parts.length <= 1) {
+        return parts[0] || '';
+    }
+    return parts;
 }
 
 function safeHtml(value: unknown): string {
@@ -154,17 +158,122 @@ interface EmailAttachment {
     content: string; // base64 content without data URL prefix
 }
 
+type ResendApiError = {
+    name: string;
+    statusCode: number | null;
+    message: string;
+};
+
+function createIdempotencyKey(value: string): string {
+    return createHash('sha256').update(value).digest('hex');
+}
+
+function sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isTransientResendError(error: ResendApiError): boolean {
+    if (error.statusCode === null) return true;
+    if (error.statusCode === 429) return true;
+    if (error.statusCode >= 500) return true;
+    return false;
+}
+
+async function resendPostJson({
+    path,
+    payload,
+    idempotencyKey,
+    timeoutMs,
+}: {
+    path: string;
+    payload: unknown;
+    idempotencyKey?: string;
+    timeoutMs: number;
+}): Promise<{ error: ResendApiError | null }> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+        const response = await fetch(`${RESEND_BASE_URL}${path}`, {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+                'Content-Type': 'application/json',
+                ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}),
+            },
+            body: JSON.stringify(payload),
+            signal: controller.signal,
+        });
+
+        if (!response.ok) {
+            const raw = await response.text();
+            try {
+                const parsed = JSON.parse(raw) as { name?: string; message?: string; statusCode?: number };
+                return {
+                    error: {
+                        name: parsed.name || 'application_error',
+                        statusCode: parsed.statusCode ?? response.status,
+                        message: parsed.message || response.statusText || 'Request failed',
+                    },
+                };
+            } catch {
+                return {
+                    error: {
+                        name: 'application_error',
+                        statusCode: response.status,
+                        message: raw || response.statusText || 'Request failed',
+                    },
+                };
+            }
+        }
+
+        return { error: null };
+    } catch (err) {
+        const error = err as {
+            name?: string;
+            message?: string;
+            cause?: { code?: string; errno?: number; syscall?: string; message?: string };
+            code?: string;
+            errno?: number;
+            syscall?: string;
+        };
+
+        console.error('[Email] Resend fetch failed:', {
+            name: error?.name || 'fetch_error',
+            message: error?.message || String(err),
+            code: error?.code || error?.cause?.code,
+            errno: error?.errno || error?.cause?.errno,
+            syscall: error?.syscall || error?.cause?.syscall,
+            causeMessage: error?.cause?.message,
+            nodeVersion: typeof process !== 'undefined' ? process.version : 'unknown',
+            resendBaseUrl: RESEND_BASE_URL,
+        });
+
+        return {
+            error: {
+                name: 'application_error',
+                statusCode: null,
+                message: 'Unable to fetch data. The request could not be resolved.',
+            },
+        };
+    } finally {
+        clearTimeout(timeoutId);
+    }
+}
+
 // Base send email function
 async function sendEmail({
     to,
     subject,
     html,
     attachments = [],
+    idempotencyKey,
 }: {
     to: string;
     subject: string;
     html: string;
     attachments?: EmailAttachment[];
+    idempotencyKey?: string;
 }): Promise<EmailResult> {
     if (!process.env.RESEND_API_KEY) {
         console.warn('[Email] RESEND_API_KEY not configured, skipping email');
@@ -186,24 +295,17 @@ async function sendEmail({
     }
 
     try {
-        const safeTo = sanitizeEmailHeader(to);
+        const safeTo = sanitizeEmailRecipients(to);
+        const firstTo = Array.isArray(safeTo) ? safeTo[0] : safeTo;
+        if (!firstTo) {
+            return { success: false, error: 'Missing recipient' };
+        }
+
         const safeSubject = sanitizeEmailHeader(subject);
         const safeFrom = sanitizeEmailHeader(FROM_EMAIL);
 
-        const emailOptions: {
-            from: string;
-            to: string;
-            subject: string;
-            html: string;
-            attachments?: { filename: string; content: Buffer }[];
-        } = {
-            from: safeFrom,
-            to: safeTo,
-            subject: safeSubject,
-            html,
-        };
-
         // Add attachments if present
+        let resendAttachments: Array<{ filename: string; content: string }> | undefined;
         if (attachments.length > 0) {
             const MAX_ATTACHMENTS = 3;
             const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
@@ -212,34 +314,70 @@ async function sendEmail({
                 .slice(0, MAX_ATTACHMENTS)
                 .filter((att) => estimateBase64DecodedBytes(att.content) <= MAX_ATTACHMENT_BYTES);
 
-            emailOptions.attachments = safeAttachments.map((att, i) => ({
+            resendAttachments = safeAttachments.map((att, i) => ({
                 filename: sanitizeEmailHeader(att.filename || `photo_${i + 1}.jpg`),
-                content: Buffer.from(att.content, 'base64'),
+                content: att.content.trim().replace(/\s+/g, ''),
             }));
         }
 
-        const { error } = await getResendClient().emails.send(emailOptions);
+        const computedIdempotencyKey = createIdempotencyKey(
+            idempotencyKey || `${safeFrom}|${firstTo}|${safeSubject}|${createIdempotencyKey(html)}`
+        );
 
-        if (error) {
-            const toDomain = safeTo.split('@')[1] || '';
-            const fromEmail = safeFrom.includes('<') ? safeFrom.split('<')[1]?.split('>')[0] || '' : safeFrom;
-            const fromDomain = fromEmail.split('@')[1] || '';
-            console.error('[Email] Send failed:', {
-                ...error,
-                nodeVersion: typeof process !== 'undefined' ? process.version : 'unknown',
-                hasFetch: typeof fetch === 'function',
-                resendBaseUrl: process.env.RESEND_BASE_URL || 'https://api.resend.com',
-                toDomain,
-                fromDomain,
-                vercelRegion: process.env.VERCEL_REGION || '',
+        const payload: {
+            from: string;
+            to: string | string[];
+            subject: string;
+            html: string;
+            attachments?: Array<{ filename: string; content: string }>;
+        } = {
+            from: safeFrom,
+            to: safeTo,
+            subject: safeSubject,
+            html,
+            ...(resendAttachments ? { attachments: resendAttachments } : {}),
+        };
+
+        const MAX_ATTEMPTS = 2;
+        const TIMEOUT_MS = 4500;
+        let lastError: ResendApiError | null = null;
+
+        for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+            const { error } = await resendPostJson({
+                path: '/emails',
+                payload,
+                idempotencyKey: computedIdempotencyKey,
+                timeoutMs: TIMEOUT_MS,
             });
-            return { success: false, error: error.message };
+
+            if (!error) {
+                if (process.env.NODE_ENV !== 'production' || process.env.EMAIL_DEBUG === '1') {
+                    const recipientLabel = Array.isArray(safeTo) ? safeTo.join(', ') : safeTo;
+                    console.log(`[Email] Sent to ${recipientLabel}: ${safeSubject} (attempt ${attempt})`);
+                }
+                return { success: true };
+            }
+
+            lastError = error;
+            if (!isTransientResendError(error) || attempt === MAX_ATTEMPTS) break;
+
+            const backoffMs = Math.round(250 * Math.pow(2, attempt - 1) + Math.random() * 150);
+            await sleep(backoffMs);
         }
 
-        if (process.env.NODE_ENV !== 'production') {
-            console.log(`[Email] Sent to ${safeTo}: ${safeSubject}`);
-        }
-        return { success: true };
+        const toDomain = firstTo.split('@')[1] || '';
+        const fromEmail = safeFrom.includes('<') ? safeFrom.split('<')[1]?.split('>')[0] || '' : safeFrom;
+        const fromDomain = fromEmail.split('@')[1] || '';
+        console.error('[Email] Send failed:', {
+            ...(lastError || { name: 'application_error', statusCode: null, message: 'Unknown error' }),
+            nodeVersion: typeof process !== 'undefined' ? process.version : 'unknown',
+            hasFetch: typeof fetch === 'function',
+            resendBaseUrl: RESEND_BASE_URL,
+            toDomain,
+            fromDomain,
+            vercelRegion: process.env.VERCEL_REGION || '',
+        });
+        return { success: false, error: lastError?.message || 'Email failed' };
     } catch (err) {
         console.error('[Email] Unexpected error:', err);
         return { success: false, error: String(err) };
@@ -373,6 +511,7 @@ export async function sendOrderConfirmation({
         to: customerEmail,
         subject: `Order Received - #${orderId.slice(0, 8).toUpperCase()}`,
         html,
+        idempotencyKey: `order-confirmation:${orderId}:${customerEmail}`,
     });
 }
 
@@ -618,6 +757,7 @@ export async function sendAdminNewOrderNotification({
         to: getAdminEmail(),
         subject: `New Order #${orderId.slice(0, 8).toUpperCase()} - $${orderTotal.toFixed(2)}`,
         html,
+        idempotencyKey: `admin-new-order:${orderId}`,
     });
 }
 
@@ -855,6 +995,7 @@ export async function sendPickupConfirmationEmail({
         to: customerEmail,
         subject: `Pickup Request Received - #${pickupId.slice(0, 8).toUpperCase()}`,
         html,
+        idempotencyKey: `pickup-confirmation:${pickupId}:${customerEmail}`,
     });
 }
 
@@ -924,5 +1065,6 @@ export async function sendAdminPickupNotification({
         to: adminEmail,
         subject: `New Pickup Request - ${companyName || customerName} (${estimatedQuantity} pallets)`,
         html,
+        idempotencyKey: `admin-new-pickup:${pickupId}`,
     });
 }
