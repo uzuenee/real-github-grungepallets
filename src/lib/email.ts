@@ -171,6 +171,20 @@ async function sendEmail({
         return { success: false, error: 'Email not configured' };
     }
 
+    if (typeof fetch !== 'function') {
+        console.error('[Email] fetch() is not available; Resend requires Node 18+ or an Edge runtime', {
+            nodeVersion: typeof process !== 'undefined' ? process.version : 'unknown',
+            vercelRuntime: process.env.VERCEL ? 'vercel' : 'unknown',
+        });
+        return { success: false, error: 'Email transport unavailable' };
+    }
+
+    if (process.env.RESEND_BASE_URL && !process.env.RESEND_BASE_URL.startsWith('https://api.resend.com')) {
+        console.warn('[Email] RESEND_BASE_URL is set but does not look like Resend; this can break email sending', {
+            resendBaseUrl: process.env.RESEND_BASE_URL,
+        });
+    }
+
     try {
         const safeTo = sanitizeEmailHeader(to);
         const safeSubject = sanitizeEmailHeader(subject);
@@ -207,7 +221,18 @@ async function sendEmail({
         const { error } = await getResendClient().emails.send(emailOptions);
 
         if (error) {
-            console.error('[Email] Send failed:', error);
+            const toDomain = safeTo.split('@')[1] || '';
+            const fromEmail = safeFrom.includes('<') ? safeFrom.split('<')[1]?.split('>')[0] || '' : safeFrom;
+            const fromDomain = fromEmail.split('@')[1] || '';
+            console.error('[Email] Send failed:', {
+                ...error,
+                nodeVersion: typeof process !== 'undefined' ? process.version : 'unknown',
+                hasFetch: typeof fetch === 'function',
+                resendBaseUrl: process.env.RESEND_BASE_URL || 'https://api.resend.com',
+                toDomain,
+                fromDomain,
+                vercelRegion: process.env.VERCEL_REGION || '',
+            });
             return { success: false, error: error.message };
         }
 
