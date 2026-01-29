@@ -297,6 +297,14 @@ export default function AdminPage() {
         setSelectedOrder((prev) => (prev && prev.id === orderId ? { ...prev, delivery_date: date } : prev));
     };
 
+    type AdminUserUpdateResponse = {
+        approvalEmail?: {
+            success?: boolean;
+            error?: string;
+        };
+        error?: string;
+    };
+
     const handleUserUpdate = async (userId: string, field: 'approved' | 'is_admin', value: boolean) => {
         // Prevent editing your own user
         if (userId === currentUserId) {
@@ -312,9 +320,10 @@ export default function AdminPage() {
                 body: JSON.stringify({ [field]: value }),
             });
 
-            let payload: any = null;
+            let payload: AdminUserUpdateResponse | null = null;
             try {
-                payload = await response.json();
+                const json = (await response.json()) as unknown;
+                payload = (json && typeof json === 'object') ? (json as AdminUserUpdateResponse) : null;
             } catch {
                 payload = null;
             }

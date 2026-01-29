@@ -169,7 +169,7 @@ export default function SignupPage() {
                 )}
 
                 {/* Form */}
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-4" noValidate>
                     <Input
                         label="Company Name *"
                         name="companyName"
@@ -250,7 +250,6 @@ export default function SignupPage() {
                                 placeholder="30318"
                                 autoComplete="postal-code"
                                 inputMode="numeric"
-                                pattern="\\d{5}"
                                 maxLength={5}
                             />
                         </div>
